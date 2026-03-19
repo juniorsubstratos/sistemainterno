@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meu Perfil — Junior Substratos</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .profile-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:32px; margin-bottom:20px; }
+    .avatar-wrap { display:flex; align-items:center; gap:24px; margin-bottom:32px; }
+    .avatar-big { width:88px; height:88px; border-radius:50%; background:var(--moss-200); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; color:var(--moss-700); overflow:hidden; flex-shrink:0; position:relative; cursor:pointer; border:3px solid var(--moss-300); }
+    .avatar-big img { width:100%; height:100%; object-fit:cover; }
+    .avatar-big:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay { position:absolute; inset:0; background:rgba(0,0,0,.45); border-radius:50%; display:flex; align-items:center; justify-content:center; opacity:0; transition:.2s; }
+    .avatar-overlay svg { width:22px; height:22px; stroke:#fff; }
+    .avatar-info h2 { font-size:20px; font-weight:700; color:var(--ink); margin:0 0 4px; }
+    .avatar-info p  { font-size:13px; color:var(--ink-faint); margin:0; }
+    .section-title { font-size:13px; font-weight:600; color:var(--ink-mid); text-transform:uppercase; letter-spacing:.06em; margin:0 0 16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+    .profile-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media(max-width:560px){ .profile-grid{ grid-template-columns:1fr; } }
+    .pw-section { margin-top:8px; }
+    .pw-divider { height:1px; background:var(--border); margin:28px 0; }
+  </style>
+</head>
+<body>
+<script src="utils.js"></script>
+<script src="sidebar.js"></script>
+<script>requireAuth(); renderSidebar('');</script>
+
+<div class="admin-layout">
+  <div class="admin-content">
+    <header class="topbar">
+      <button id="menu-btn" class="topbar-menu-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <span class="topbar-title">Junior Substratos</span>
+      <div class="topbar-right">
+        <span class="topbar-clock" id="clock">00:00:00</span>
+        <div class="topbar-user">
+          <div class="topbar-avatar" id="topbar-avatar">U</div>
+          <span id="topbar-user-name" style="font-size:12px;font-weight:500;color:var(--ink-mid)">Usuário</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-heading">Meu Perfil</h1>
+          <p class="page-sub">Gerencie suas informações pessoais e segurança da conta.</p>
+        </div>
+      </div>
+
+      <!-- Avatar + info -->
+      <div class="profile-card">
+        <div class="avatar-wrap">
+          <div class="avatar-big" id="avatar-big" title="Clique para trocar a foto">
+            <span id="avatar-initials">U</span>
+            <div class="avatar-overlay">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+          </div>
+          <div class="avatar-info">
+            <h2 id="profile-name">Carregando...</h2>
+            <p id="profile-email">—</p>
+            <p id="profile-since" style="font-size:12px;color:var(--ink-faint);margin-top:4px">—</p>
+          </div>
+        </div>
+
+        <!-- Upload invisível -->
+        <input type="file" id="avatar-input" accept="image/*" style="display:none" />
+
+        <p class="section-title">Informações da conta</p>
+        <div class="profile-grid">
+          <div class="field">
+            <label class="field-label" for="pf-nome">Nome completo</label>
+            <input class="field-input" type="text" id="pf-nome" placeholder="Seu nome" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pf-email">E-mail</label>
+            <input class="field-input" type="email" id="pf-email" disabled style="opacity:.6;cursor:not-allowed" />
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-salvar-perfil" style="margin-top:4px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px"><path d="M17 3H5a2 2 0 00-2 2v12l4-2 3 1.5L13 15l4 2V5a2 2 0 00-2-2z"/></svg>
+          Salvar alterações
+        </button>
+      </div>
+
+      <!-- Alterar senha -->
+      <div class="profile-card">
+        <p class="section-title">Segurança — alterar senha</p>
+
+        <div id="alert-pw" class="alert alert-error hidden" style="margin-bottom:16px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
+          <span id="alert-pw-msg"></span>
+        </div>
+
+        <div class="profile-grid pw-section">
+          <div class="field" style="grid-column:1/-1">
+            <label class="field-label" for="pw-atual">Senha atual <span class="req">*</span></label>
+            <div class="pw-wrap">
+              <input class="field-input" type="password" id="pw-atual" placeholder="Digite sua senha atual" />
+              <button type="button" class="pw-toggle" id="toggle-pw-atual"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="pw-nova">Nova senha <span class="req">*</span></label>
+            <div class="pw-wrap">
+              <input class="field-input" type="password" id="pw-nova" placeholder="Mínimo 6 caracteres" />
+              <button type="button" class="pw-toggle" id="toggle-pw-nova"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="pw-conf">Confirmar nova senha <span class="req">*</span></label>
+            <div class="pw-wrap">
+              <input class="field-input" type="password" id="pw-conf" placeholder="Repita a nova senha" />
+              <button type="button" class="pw-toggle" id="toggle-pw-conf"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-alterar-senha" style="margin-top:12px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px"><rect x="3" y="9" width="14" height="10" rx="2"/><path d="M7 9V6a3 3 0 016 0v3"/></svg>
+          Alterar senha
+        </button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+(function(){
+  startClock('clock'); initSidebar();
+
+  const user = getLoggedUser();
+  if (!user) return;
+
+  // Preenche dados
+  document.getElementById('pf-nome').value  = user.name  || '';
+  document.getElementById('pf-email').value = user.email || '';
+  document.getElementById('profile-name').textContent  = user.name  || user.email;
+  document.getElementById('profile-email').textContent = user.email || '';
+  if (user.createdAt) {
+    const d = new Date(user.createdAt);
+    document.getElementById('profile-since').textContent = 'Conta criada em ' + d.toLocaleDateString('pt-BR');
+  }
+
+  // Avatar
+  const initials = (user.name || user.email || 'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('avatar-initials').textContent = initials;
+  if (user.avatar) {
+    document.getElementById('avatar-big').innerHTML = '<img src="' + user.avatar + '" alt="Foto de perfil" />';
+  }
+
+  // Upload de foto
+  document.getElementById('avatar-big').addEventListener('click', function(){
+    document.getElementById('avatar-input').click();
+  });
+  document.getElementById('avatar-input').addEventListener('change', function(){
+    const file = this.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast('Imagem muito grande. Use até 2MB.', 'err'); return; }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const src = e.target.result;
+      document.getElementById('avatar-big').innerHTML = '<img src="' + src + '" alt="Foto" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>';
+      // Salva no usuário
+      const u = getLoggedUser();
+      u.avatar = src;
+      setLoggedUser(u);
+      // Salva também na lista de usuários
+      const users = getUsers();
+      const idx = users.findIndex(x => x.email === u.email);
+      if (idx >= 0) { users[idx].avatar = src; saveUsers(users); }
+      // Atualiza sidebar
+      const sideAvatar = document.getElementById('sidebar-avatar');
+      if (sideAvatar) { sideAvatar.innerHTML = '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>'; }
+      const topAvatar = document.getElementById('topbar-avatar');
+      if (topAvatar) { topAvatar.innerHTML = '<img src="' + src + '" style="width:32px;height:32px;object-fit:cover;border-radius:50%"/>'; }
+      toast('Foto atualizada!', 'ok');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Salvar nome
+  document.getElementById('btn-salvar-perfil').addEventListener('click', function(){
+    const nome = document.getElementById('pf-nome').value.trim();
+    if (!nome) { toast('Informe seu nome.', 'err'); return; }
+    const u = getLoggedUser();
+    u.name = nome;
+    setLoggedUser(u);
+    const users = getUsers();
+    const idx = users.findIndex(x => x.email === u.email);
+    if (idx >= 0) { users[idx].name = nome; saveUsers(users); }
+    document.getElementById('profile-name').textContent = nome;
+    const nameEl = document.getElementById('sidebar-user-name');
+    if (nameEl) nameEl.textContent = nome;
+    const topName = document.getElementById('topbar-user-name');
+    if (topName) topName.textContent = nome;
+    toast('Perfil atualizado!', 'ok');
+  });
+
+  // Toggle senhas
+  [['toggle-pw-atual','pw-atual'],['toggle-pw-nova','pw-nova'],['toggle-pw-conf','pw-conf']].forEach(([b,i])=>{
+    document.getElementById(b).addEventListener('click',function(){
+      const inp=document.getElementById(i); inp.type=inp.type==='password'?'text':'password';
+    });
+  });
+
+  // Alterar senha
+  document.getElementById('btn-alterar-senha').addEventListener('click', function(){
+    const alertEl  = document.getElementById('alert-pw');
+    const alertMsg = document.getElementById('alert-pw-msg');
+    alertEl.classList.add('hidden');
+
+    const atual = document.getElementById('pw-atual').value;
+    const nova  = document.getElementById('pw-nova').value;
+    const conf  = document.getElementById('pw-conf').value;
+
+    if (!atual) { alertMsg.textContent='Informe sua senha atual.'; alertEl.classList.remove('hidden'); return; }
+    const u = getLoggedUser();
+    if (u.password !== atual) { alertMsg.textContent='Senha atual incorreta.'; alertEl.classList.remove('hidden'); return; }
+    if (!nova || nova.length < 6) { alertMsg.textContent='Nova senha deve ter no mínimo 6 caracteres.'; alertEl.classList.remove('hidden'); return; }
+    if (nova !== conf) { alertMsg.textContent='As senhas não coincidem.'; alertEl.classList.remove('hidden'); return; }
+
+    u.password = nova;
+    setLoggedUser(u);
+    const users = getUsers();
+    const idx = users.findIndex(x => x.email === u.email);
+    if (idx >= 0) { users[idx].password = nova; saveUsers(users); }
+
+    document.getElementById('pw-atual').value = '';
+    document.getElementById('pw-nova').value  = '';
+    document.getElementById('pw-conf').value  = '';
+    toast('Senha alterada com sucesso!', 'ok');
+  });
+
+  // Mobile sidebar
+  const sidebar = document.querySelector('.sidebar');
+  const menuBtn = document.getElementById('menu-btn');
+  if (sidebar && menuBtn) {
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+    menuBtn.addEventListener('click', function(){ sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+    overlay.addEventListener('click', function(){ sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+  }
+})();
+</script>
+</body>
+</html>

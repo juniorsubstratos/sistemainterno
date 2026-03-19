@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperar Senha — Junior Substratos</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="auth-left-logo">
+        <img src="juniorsubstratos.svg" alt="Junior Substratos" class="logo-white logo-auth" />
+      </div>
+      <div class="auth-left-body">
+        <div class="auth-leaf-deco"></div>
+        <h2 class="auth-left-tagline">Sem stress,<br><em>nova senha em minutos</em></h2>
+        <p class="auth-left-sub">Informe seu e-mail cadastrado e enviaremos um código para redefinir sua senha.</p>
+        <div class="auth-features">
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Código válido por 10 minutos</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Processo 100% seguro</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Acesso restaurado na hora</div>
+        </div>
+      </div>
+      <p class="auth-left-foot">© 2025 Junior Substratos · Uso exclusivo interno</p>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box">
+
+      <!-- Passo 1: informar e-mail -->
+      <div id="step-email">
+        <div style="width:52px;height:52px;border-radius:var(--r-md);background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-700)" stroke-width="2" style="width:24px;height:24px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <div class="auth-box-eyebrow">Recuperação de acesso</div>
+        <h1 class="auth-box-title">Esqueci minha senha</h1>
+        <p class="auth-box-sub">Digite o e-mail da sua conta para receber o código de redefinição.</p>
+
+        <div id="alert-step1" class="alert alert-error hidden" style="margin-bottom:14px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
+          <span id="alert-step1-msg"></span>
+        </div>
+
+        <div class="auth-form">
+          <div class="field">
+            <label class="field-label" for="rec-email">E-mail cadastrado <span class="req">*</span></label>
+            <input class="field-input" type="email" id="rec-email" placeholder="seu@junior.com" autocomplete="email" />
+            <span class="field-error" id="err-rec-email"></span>
+          </div>
+          <button class="btn btn-primary btn-lg" id="btn-enviar-rec" style="width:100%;justify-content:center">
+            Enviar código de redefinição
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h12l2 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6l2-2z"/></svg>
+          </button>
+        </div>
+        <p class="auth-footer"><a href="index.html" class="auth-link">← Voltar ao login</a></p>
+      </div>
+
+      <!-- Passo 2: inserir código -->
+      <div id="step-code" class="hidden" style="animation:authReveal .4s ease both">
+        <div style="width:52px;height:52px;border-radius:var(--r-md);background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-700)" stroke-width="2" style="width:24px;height:24px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="auth-box-eyebrow">Verificação</div>
+        <h1 class="auth-box-title">Digite o código</h1>
+        <p class="auth-box-sub">Código enviado para <strong id="rec-email-display" style="color:var(--moss-700)"></strong>.</p>
+
+        <div id="code-hint-rec" style="background:var(--moss-100);border:1.5px dashed var(--moss-400);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:13px;color:var(--ink-soft);cursor:pointer"></div>
+
+        <div id="alert-step2" class="alert alert-error hidden" style="margin-bottom:14px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
+          <span id="alert-step2-msg"></span>
+        </div>
+
+        <div class="code-inputs" style="margin-bottom:16px">
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="r0"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="r1"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="r2"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="r3"/>
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-verificar-rec" style="width:100%;justify-content:center">Verificar código</button>
+      </div>
+
+      <!-- Passo 3: nova senha -->
+      <div id="step-nova-senha" class="hidden" style="animation:authReveal .4s ease both">
+        <div style="width:52px;height:52px;border-radius:var(--r-md);background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-700)" stroke-width="2" style="width:24px;height:24px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="auth-box-eyebrow">Nova senha</div>
+        <h1 class="auth-box-title">Redefina sua senha</h1>
+        <p class="auth-box-sub">Escolha uma senha forte para proteger sua conta.</p>
+
+        <div id="alert-step3" class="alert alert-error hidden" style="margin-bottom:14px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
+          <span id="alert-step3-msg"></span>
+        </div>
+
+        <div class="auth-form">
+          <div class="field">
+            <label class="field-label" for="nova-senha">Nova senha <span class="req">*</span></label>
+            <div class="pw-wrap">
+              <input class="field-input" type="password" id="nova-senha" placeholder="Mínimo 6 caracteres" />
+              <button type="button" class="pw-toggle" id="toggle-ns"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+            </div>
+            <span class="field-error" id="err-nova-senha"></span>
+          </div>
+          <div class="field">
+            <label class="field-label" for="conf-senha">Confirmar nova senha <span class="req">*</span></label>
+            <div class="pw-wrap">
+              <input class="field-input" type="password" id="conf-senha" placeholder="Repita a senha" />
+              <button type="button" class="pw-toggle" id="toggle-cs"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+            </div>
+            <span class="field-error" id="err-conf-senha"></span>
+          </div>
+          <button class="btn btn-primary btn-lg" id="btn-salvar-senha" style="width:100%;justify-content:center">Salvar nova senha</button>
+        </div>
+      </div>
+
+      <!-- Passo 4: sucesso -->
+      <div id="step-ok" class="hidden" style="text-align:center;animation:authReveal .5s ease both">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-600)" stroke-width="2.5" style="width:28px;height:28px"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div class="auth-box-eyebrow" style="justify-content:center">Concluído</div>
+        <h1 class="auth-box-title" style="text-align:center">Senha redefinida!</h1>
+        <p style="font-size:13px;color:var(--ink-light);margin:8px 0 24px;line-height:1.6">Sua senha foi atualizada com sucesso. Faça login com a nova senha.</p>
+        <a href="index.html" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;display:inline-flex">
+          Ir para o login
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6M15 10H3"/></svg>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="utils.js"></script>
+<script>
+(function(){
+  const EMAILJS_PUBLIC_KEY  = 'r8_6oZrSGo1YIme5e';
+  const EMAILJS_SERVICE_ID  = 'Junior Substratos';
+  const EMAILJS_TEMPLATE_ID = '87dhqrw';
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+  let recCode = '';
+  let recEmail = '';
+
+  // Toggle senhas
+  function togglePw(btnId, inpId){
+    document.getElementById(btnId).addEventListener('click', function(){
+      const i = document.getElementById(inpId);
+      i.type = i.type === 'password' ? 'text' : 'password';
+    });
+  }
+  togglePw('toggle-ns','nova-senha');
+  togglePw('toggle-cs','conf-senha');
+
+  function showStep(id){ ['step-email','step-code','step-nova-senha','step-ok'].forEach(s=>document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+  function showAlert(id, msg){ document.getElementById(id+'-msg').textContent=msg; document.getElementById(id).classList.remove('hidden'); }
+  function hideAlert(id){ document.getElementById(id).classList.add('hidden'); }
+
+  // PASSO 1 — Enviar código
+  document.getElementById('btn-enviar-rec').addEventListener('click', async function(){
+    hideAlert('alert-step1');
+    const email = document.getElementById('rec-email').value.trim();
+    if (!email || !isValidEmail(email)) { showAlert('alert-step1','Informe um e-mail válido.'); return; }
+    const user = findUser(email);
+    if (!user) { showAlert('alert-step1','E-mail não encontrado. Verifique ou faça seu cadastro.'); return; }
+
+    this.disabled = true;
+    this.textContent = 'Enviando...';
+    recCode = String(Math.floor(1000 + Math.random() * 9000));
+    recEmail = email;
+
+    try {
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_name: user.name || email.split('@')[0],
+        to_email: email, email: email,
+        code: recCode, from_name: 'Junior Substratos'
+      });
+      toast('Código enviado para ' + email, 'ok', 4000);
+    } catch(e) {
+      toast('E-mail não enviado. Use o código exibido na tela.', 'info', 5000);
+    }
+
+    document.getElementById('rec-email-display').textContent = email;
+    const hint = document.getElementById('code-hint-rec');
+    hint.innerHTML = '📬 Verifique seu e-mail. Código de redefinição:<br><strong style="font-size:28px;letter-spacing:8px;color:var(--moss-700);display:block;margin-top:8px">' + recCode + '</strong><span style="font-size:11px;color:var(--ink-faint)">Clique para preencher automaticamente</span>';
+    hint.addEventListener('click', function(){
+      recCode.split('').forEach((d,i)=>{ const inp=document.getElementById('r'+i); if(inp) inp.value=d; });
+    });
+
+    // Navegação inputs
+    document.querySelectorAll('.code-digit').forEach((inp, idx, all) => {
+      inp.addEventListener('input', function(){ this.value=this.value.replace(/\D/g,'').slice(-1); if(this.value && idx<all.length-1) all[idx+1].focus(); });
+      inp.addEventListener('keydown', function(e){ if(e.key==='Backspace'&&!this.value&&idx>0) all[idx-1].focus(); });
+    });
+
+    showStep('step-code');
+    this.disabled = false;
+  });
+
+  // PASSO 2 — Verificar código
+  document.getElementById('btn-verificar-rec').addEventListener('click', function(){
+    hideAlert('alert-step2');
+    const entered = [0,1,2,3].map(i=>(document.getElementById('r'+i).value||'')).join('');
+    if (entered.length < 4) { showAlert('alert-step2','Digite os 4 dígitos.'); return; }
+    if (entered !== recCode) { showAlert('alert-step2','Código incorreto. Tente novamente.'); return; }
+    showStep('step-nova-senha');
+  });
+
+  // PASSO 3 — Salvar nova senha
+  document.getElementById('btn-salvar-senha').addEventListener('click', function(){
+    hideAlert('alert-step3');
+    const nova = document.getElementById('nova-senha').value;
+    const conf = document.getElementById('conf-senha').value;
+    if (!nova || nova.length < 6) { showAlert('alert-step3','Senha deve ter no mínimo 6 caracteres.'); return; }
+    if (nova !== conf) { showAlert('alert-step3','As senhas não coincidem.'); return; }
+
+    const users = getUsers();
+    const idx = users.findIndex(u => u.email.toLowerCase() === recEmail.toLowerCase());
+    if (idx >= 0) { users[idx].password = nova; saveUsers(users); }
+
+    showStep('step-ok');
+  });
+})();
+</script>
+</body>
+</html>
