@@ -77,42 +77,59 @@
 <script src="utils.js"></script>
 <script>
 (function(){
-  const pending=JSON.parse(sessionStorage.getItem('js_pending_user')||'null');
-  if(!pending){window.location.href='cadastro.html';return;}
-  document.getElementById('email-display').textContent=pending.email;
-  document.getElementById('code-demo-val').textContent=pending.code;
-  console.log(`[Junior Substratos] Código para ${pending.email}: ${pending.code}`);
+  const pending = JSON.parse(sessionStorage.getItem('js_pending_user') || 'null');
+  if (!pending) { window.location.href = 'cadastro.html'; return; }
 
-  const digits=[0,1,2,3].map(i=>document.getElementById('d'+i));
-  digits.forEach((inp,idx)=>{
-    inp.addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(-1);if(this.value&&idx<3)digits[idx+1].focus();this.classList.toggle('filled',!!this.value);});
-    inp.addEventListener('keydown',function(e){if(e.key==='Backspace'&&!this.value&&idx>0){digits[idx-1].focus();digits[idx-1].value='';digits[idx-1].classList.remove('filled');}});
-    inp.addEventListener('paste',function(e){e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');t.split('').slice(0,4).forEach((ch,i)=>{if(digits[i]){digits[i].value=ch;digits[i].classList.add('filled');}});if(digits[Math.min(t.length,3)])digits[Math.min(t.length,3)].focus();});
+  const emailDisplay = document.getElementById('email-display');
+  if (emailDisplay) emailDisplay.textContent = pending.email;
+
+  // Fallback: mostra código na tela
+  const codeHint = document.createElement('div');
+  codeHint.style.cssText = 'background:var(--moss-100);border:1.5px dashed var(--moss-400);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:13px;color:var(--ink-soft);cursor:pointer';
+  codeHint.innerHTML = '\u{1F4EC} Verifique seu e-mail. Se não receber, use o código abaixo:<br><strong style="font-size:28px;letter-spacing:8px;color:var(--moss-700);display:block;margin-top:8px">' + pending.code + '</strong><span style="font-size:11px;color:var(--ink-faint)">Clique para preencher automaticamente</span>';
+  codeHint.addEventListener('click', function(){
+    pending.code.split('').forEach((d, i) => {
+      const inp = document.getElementById('d' + i);
+      if (inp) inp.value = d;
+    });
   });
-  digits[0].focus();
+  const alertBox = document.getElementById('alert-code');
+  if (alertBox) alertBox.parentNode.insertBefore(codeHint, alertBox);
 
-  function showErr(m){document.getElementById('alert-code-msg').textContent=m;document.getElementById('alert-code').classList.remove('hidden');}
-  function hideErr(){document.getElementById('alert-code').classList.add('hidden');}
+  // Navegação entre inputs
+  document.querySelectorAll('.code-digit').forEach((inp, idx, all) => {
+    inp.addEventListener('input', function(){
+      this.value = this.value.replace(/\D/g,'').slice(-1);
+      if (this.value && idx < all.length - 1) all[idx + 1].focus();
+    });
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Backspace' && !this.value && idx > 0) all[idx - 1].focus();
+    });
+  });
 
-  document.getElementById('btn-confirmar').addEventListener('click',function(){
-    hideErr();
-    const entered=digits.map(d=>d.value).join('');
-    if(entered.length<4){showErr('Digite o código completo de 4 dígitos.');return;}
-    if(entered!==pending.code){showErr('Código incorreto. Verifique e tente novamente.');return;}
-    addUser({id:uid(),email:pending.email,name:pending.nome,password:pending.senha,verified:true});
+  // Confirmar código
+  document.getElementById('btn-confirmar').addEventListener('click', function(){
+    const entered = [0,1,2,3].map(i => (document.getElementById('d'+i).value||'')).join('');
+    const alertEl = document.getElementById('alert-code');
+    const alertMsg = document.getElementById('alert-code-msg');
+    if (entered.length < 4) {
+      alertMsg.textContent = 'Digite os 4 dígitos do código.';
+      alertEl.classList.remove('hidden'); return;
+    }
+    if (entered !== pending.code) {
+      alertMsg.textContent = 'Código incorreto. Tente novamente.';
+      alertEl.classList.remove('hidden'); return;
+    }
+    alertEl.classList.add('hidden');
+    addUser({ name: pending.nome, email: pending.email, password: pending.senha, verified: true, createdAt: Date.now() });
     sessionStorage.removeItem('js_pending_user');
     document.getElementById('state-code').classList.add('hidden');
     document.getElementById('state-success').classList.remove('hidden');
-    toast('Conta ativada!','ok');
   });
 
-  document.getElementById('btn-reenviar').addEventListener('click',function(){
-    const nc=String(Math.floor(1000+Math.random()*9000));
-    pending.code=nc; sessionStorage.setItem('js_pending_user',JSON.stringify(pending));
-    document.getElementById('code-demo-val').textContent=nc;
-    console.log(`[Junior Substratos] Novo código: ${nc}`);
-    toast('Código reenviado!','info');
-    digits.forEach(d=>{d.value='';d.classList.remove('filled');}); digits[0].focus(); hideErr();
+  // Reenviar
+  document.getElementById('btn-reenviar').addEventListener('click', function(){
+    toast('Verifique o e-mail ou use o código exibido acima.', 'info', 4000);
   });
 })();
 </script>

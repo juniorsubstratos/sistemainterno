@@ -89,9 +89,9 @@
   ║    Message  : Seu código: {{code}}                   ║
   ╚══════════════════════════════════════════════════════╝
   */
-  const EMAILJS_PUBLIC_KEY  = 'COLE_SUA_PUBLIC_KEY_AQUI';
-  const EMAILJS_SERVICE_ID  = 'COLE_SEU_SERVICE_ID_AQUI';
-  const EMAILJS_TEMPLATE_ID = 'COLE_SEU_TEMPLATE_ID_AQUI';
+  const EMAILJS_PUBLIC_KEY  = 'r8_6oZrSGo1YIme5e';
+  const EMAILJS_SERVICE_ID  = 'Junior Substratos';
+  const EMAILJS_TEMPLATE_ID = '87dhqrw';
 
   emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
@@ -147,6 +147,7 @@
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
         to_name:   nome,
         to_email:  email,
+        email:     email,
         code:      code,
         from_name: 'Junior Substratos'
       });
@@ -154,39 +155,12 @@
       setTimeout(() => window.location.href = 'verificacao.html', 1200);
     } catch(err) {
       console.error('EmailJS error:', err);
-      toast('Erro ao enviar e-mail. Verifique as configurações do EmailJS.', 'err', 6000);
-      btn.disabled = false;
-      btn.innerHTML = 'Enviar código de verificação <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h12l2 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6l2-2z"/></svg>';
+      toast('E-mail não enviado. O código aparecerá na tela de verificação.', 'info', 5000);
+      setTimeout(() => window.location.href = 'verificacao.html', 2000);
     }
   });
 })();
 </script>
-<script>
-(function(){
-  function togglePw(b,i){document.getElementById(b).addEventListener('click',function(){const inp=document.getElementById(i);inp.type=inp.type==='password'?'text':'password';});}
-  togglePw('toggle-pw1','senha'); togglePw('toggle-pw2','confirma');
-  function setErr(id,m){const e=document.getElementById('err-'+id);if(e){e.textContent=m;e.classList.add('visible');}const i=document.getElementById(id);if(i)i.classList.add('error');}
-  function clearErr(){document.querySelectorAll('.field-error').forEach(e=>{e.textContent='';e.classList.remove('visible');});document.querySelectorAll('.field-input').forEach(e=>e.classList.remove('error'));}
-  document.getElementById('cadastro-form').addEventListener('submit',function(e){
-    e.preventDefault();clearErr();
-    const nome=document.getElementById('nome').value.trim();
-    const email=document.getElementById('email').value.trim();
-    const senha=document.getElementById('senha').value;
-    const confirma=document.getElementById('confirma').value;
-    let ok=true;
-    if(!nome){setErr('nome','Informe seu nome');ok=false;}
-    if(!email){setErr('email','Informe seu e-mail');ok=false;}else if(!isValidEmail(email)){setErr('email','E-mail inválido');ok=false;}
-    if(!senha){setErr('senha','Informe uma senha');ok=false;}else if(senha.length<6){setErr('senha','Mínimo 6 caracteres');ok=false;}
-    if(!confirma){setErr('confirma','Confirme sua senha');ok=false;}else if(senha!==confirma){setErr('confirma','As senhas não coincidem');ok=false;}
-    if(!ok)return;
-    if(findUser(email)){setErr('email','E-mail já cadastrado');return;}
-    const code=String(Math.floor(1000+Math.random()*9000));
-    sessionStorage.setItem('js_pending_user',JSON.stringify({nome,email,senha,code}));
-    console.log(`[Junior Substratos] Código para ${email}: ${code}`);
-    toast('Código gerado! Redirecionando…','ok');
-    setTimeout(()=>window.location.href='verificacao.html',800);
-  });
-})();
-</script>
+
 </body>
 </html>

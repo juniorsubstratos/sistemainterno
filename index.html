@@ -69,7 +69,8 @@
         </button>
       </form>
 
-      <p class="auth-footer">Não tem conta?&nbsp;<a href="cadastro.html" class="auth-link">Criar novo acesso</a></p>
+      <p class="auth-footer" style="margin-bottom:6px">Não tem conta?&nbsp;<a href="cadastro.html" class="auth-link">Criar novo acesso</a></p>
+      <p class="auth-footer"><a href="recuperar-senha.html" class="auth-link" style="color:var(--ink-faint);font-size:12px">Esqueci minha senha</a></p>
     </div>
   </div>
 </div>
@@ -78,32 +79,42 @@
 <script src="utils.js"></script>
 <script>
 (function() {
+  const form    = document.getElementById('login-form');
+  const emailEl = document.getElementById('email');
+  const senhaEl = document.getElementById('senha');
 
-  const form=document.getElementById('login-form');
-  const emailEl=document.getElementById('email');
-  const senhaEl=document.getElementById('senha');
+  function showAlert(m) { document.getElementById('alert-msg').textContent=m; document.getElementById('alert-box').classList.remove('hidden'); }
+  function hideAlert()   { document.getElementById('alert-box').classList.add('hidden'); }
+  function clearErr()    { document.querySelectorAll('.field-error').forEach(e=>{e.textContent='';e.classList.remove('visible');}); document.querySelectorAll('.field-input').forEach(e=>e.classList.remove('error')); hideAlert(); }
+  function setErr(id,m)  { const e=document.getElementById('err-'+id); if(e){e.textContent=m;e.classList.add('visible');} const i=document.getElementById(id); if(i)i.classList.add('error'); }
 
-  function showAlert(m){document.getElementById('alert-msg').textContent=m;document.getElementById('alert-box').classList.remove('hidden');}
-  function hideAlert(){document.getElementById('alert-box').classList.add('hidden');}
-  function clearErr(){document.querySelectorAll('.field-error').forEach(e=>{e.textContent='';e.classList.remove('visible');});document.querySelectorAll('.field-input').forEach(e=>e.classList.remove('error'));hideAlert();}
-  function setErr(id,m){const e=document.getElementById('err-'+id);if(e){e.textContent=m;e.classList.add('visible');}const i=document.getElementById(id);if(i)i.classList.add('error');}
-
-  document.getElementById('toggle-pw').addEventListener('click',function(){
-    const t=senhaEl.type==='password'?'text':'password'; senhaEl.type=t;
-    this.innerHTML=t==='text'?`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3l14 14M10 4c5.5 0 9 6 9 6s-1.3 2.2-3.5 3.9M1 10s3.5-6 9-6"/></svg>`:`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg>`;
+  // Toggle senha
+  document.getElementById('toggle-pw').addEventListener('click', function() {
+    const t = senhaEl.type === 'password' ? 'text' : 'password';
+    senhaEl.type = t;
+    this.innerHTML = t === 'text'
+      ? `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3l14 14M10 4c5.5 0 9 6 9 6s-1.3 2.2-3.5 3.9M1 10s3.5-6 9-6"/></svg>`
+      : `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg>`;
   });
 
-  form.addEventListener('submit',function(e){
+  // Login
+  form.addEventListener('submit', function(e) {
     e.preventDefault(); clearErr();
-    const email=emailEl.value.trim(), senha=senhaEl.value; let ok=true;
-    if(!email){setErr('email','Informe seu e-mail');ok=false;}else if(!isValidEmail(email)){setErr('email','E-mail inválido');ok=false;}
-    if(!senha){setErr('senha','Informe sua senha');ok=false;}
-    if(!ok)return;
-    const user=findUser(email);
-    if(!user||user.password!==senha){showAlert('E-mail ou senha incorretos.');return;}
-    if(!user.verified){showAlert('Conta não verificada.');return;}
-    setLoggedUser(user); toast('Bem-vindo!','ok');
-    setTimeout(()=>window.location.href='dashboard.html',800);
+    const email = emailEl.value.trim();
+    const senha = senhaEl.value;
+    let ok = true;
+    if (!email) { setErr('email','Informe seu e-mail'); ok=false; }
+    else if (!isValidEmail(email)) { setErr('email','E-mail inválido'); ok=false; }
+    if (!senha) { setErr('senha','Informe sua senha'); ok=false; }
+    if (!ok) return;
+
+    const user = findUser(email);
+    if (!user || user.password !== senha) { showAlert('E-mail ou senha incorretos.'); return; }
+    if (!user.verified) { showAlert('Conta não verificada. Conclua o cadastro.'); return; }
+
+    setLoggedUser(user);
+    toast('Bem-vindo!', 'ok');
+    setTimeout(() => window.location.href = 'dashboard.html', 800);
   });
 })();
 </script>

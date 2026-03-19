@@ -23,6 +23,10 @@ function renderSidebar(activePage) {
             ${item.icon} ${item.label}
           </a>`).join('')}
         <div class="nav-separator"></div>
+        <a href="perfil.html" class="nav-item">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+          Meu Perfil
+        </a>
         <a href="#" class="nav-item" data-logout>
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 3h4a1 1 0 011 1v12a1 1 0 01-1 1h-4M9 14l4-4-4-4M13 10H3"/></svg>
           Sair do sistema
