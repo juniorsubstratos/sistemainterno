@@ -5,27 +5,24 @@
   <title>Meu Perfil — Junior Substratos</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    .profile-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:32px; margin-bottom:20px; }
-    .avatar-wrap { display:flex; align-items:center; gap:24px; margin-bottom:32px; }
-    .avatar-big { width:88px; height:88px; border-radius:50%; background:var(--moss-200); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; color:var(--moss-700); overflow:hidden; flex-shrink:0; position:relative; cursor:pointer; border:3px solid var(--moss-300); }
-    .avatar-big img { width:100%; height:100%; object-fit:cover; }
-    .avatar-big:hover .avatar-overlay { opacity:1; }
-    .avatar-overlay { position:absolute; inset:0; background:rgba(0,0,0,.45); border-radius:50%; display:flex; align-items:center; justify-content:center; opacity:0; transition:.2s; }
-    .avatar-overlay svg { width:22px; height:22px; stroke:#fff; }
-    .avatar-info h2 { font-size:20px; font-weight:700; color:var(--ink); margin:0 0 4px; }
-    .avatar-info p  { font-size:13px; color:var(--ink-faint); margin:0; }
-    .section-title { font-size:13px; font-weight:600; color:var(--ink-mid); text-transform:uppercase; letter-spacing:.06em; margin:0 0 16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
-    .profile-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    @media(max-width:560px){ .profile-grid{ grid-template-columns:1fr; } }
-    .pw-section { margin-top:8px; }
-    .pw-divider { height:1px; background:var(--border); margin:28px 0; }
+    .profile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:32px;margin-bottom:20px}
+    .avatar-wrap{display:flex;align-items:center;gap:24px;margin-bottom:32px}
+    .avatar-big{width:88px;height:88px;border-radius:50%;background:var(--moss-200);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:var(--moss-700);overflow:hidden;flex-shrink:0;position:relative;cursor:pointer;border:3px solid var(--moss-300)}
+    .avatar-big img{width:100%;height:100%;object-fit:cover}
+    .avatar-big:hover .avatar-overlay{opacity:1}
+    .avatar-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s}
+    .avatar-overlay svg{width:22px;height:22px;stroke:#fff}
+    .avatar-info h2{font-size:20px;font-weight:700;color:var(--ink);margin:0 0 4px}
+    .avatar-info p{font-size:13px;color:var(--ink-faint);margin:0}
+    .section-title{font-size:13px;font-weight:600;color:var(--ink-mid);text-transform:uppercase;letter-spacing:.06em;margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+    .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:560px){.profile-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <script src="utils.js"></script>
 <script src="sidebar.js"></script>
 <script>requireAuth(); renderSidebar('');</script>
-
 <div class="admin-layout">
   <div class="admin-content">
     <header class="topbar">
@@ -41,7 +38,6 @@
         </div>
       </div>
     </header>
-
     <main class="page-content">
       <div class="page-header">
         <div>
@@ -50,7 +46,6 @@
         </div>
       </div>
 
-      <!-- Avatar + info -->
       <div class="profile-card">
         <div class="avatar-wrap">
           <div class="avatar-big" id="avatar-big" title="Clique para trocar a foto">
@@ -62,13 +57,10 @@
           <div class="avatar-info">
             <h2 id="profile-name">Carregando...</h2>
             <p id="profile-email">—</p>
-            <p id="profile-since" style="font-size:12px;color:var(--ink-faint);margin-top:4px">—</p>
+            <p id="profile-since" style="font-size:12px;color:var(--ink-faint);margin-top:4px"></p>
           </div>
         </div>
-
-        <!-- Upload invisível -->
         <input type="file" id="avatar-input" accept="image/*" style="display:none" />
-
         <p class="section-title">Informações da conta</p>
         <div class="profile-grid">
           <div class="field">
@@ -86,35 +78,32 @@
         </button>
       </div>
 
-      <!-- Alterar senha -->
       <div class="profile-card">
         <p class="section-title">Segurança — alterar senha</p>
-
         <div id="alert-pw" class="alert alert-error hidden" style="margin-bottom:16px">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
           <span id="alert-pw-msg"></span>
         </div>
-
-        <div class="profile-grid pw-section">
+        <div class="profile-grid">
           <div class="field" style="grid-column:1/-1">
             <label class="field-label" for="pw-atual">Senha atual <span class="req">*</span></label>
             <div class="pw-wrap">
               <input class="field-input" type="password" id="pw-atual" placeholder="Digite sua senha atual" />
-              <button type="button" class="pw-toggle" id="toggle-pw-atual"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+              <button type="button" class="pw-toggle" id="t1"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
             </div>
           </div>
           <div class="field">
             <label class="field-label" for="pw-nova">Nova senha <span class="req">*</span></label>
             <div class="pw-wrap">
               <input class="field-input" type="password" id="pw-nova" placeholder="Mínimo 6 caracteres" />
-              <button type="button" class="pw-toggle" id="toggle-pw-nova"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+              <button type="button" class="pw-toggle" id="t2"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
             </div>
           </div>
           <div class="field">
             <label class="field-label" for="pw-conf">Confirmar nova senha <span class="req">*</span></label>
             <div class="pw-wrap">
               <input class="field-input" type="password" id="pw-conf" placeholder="Repita a nova senha" />
-              <button type="button" class="pw-toggle" id="toggle-pw-conf"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
+              <button type="button" class="pw-toggle" id="t3"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg></button>
             </div>
           </div>
         </div>
@@ -123,130 +112,115 @@
           Alterar senha
         </button>
       </div>
-
     </main>
   </div>
 </div>
-
 <div id="toast"></div>
 <script>
 (function(){
   startClock('clock'); initSidebar();
-
-  const user = getLoggedUser();
-  if (!user) return;
-
-  // Preenche dados
-  document.getElementById('pf-nome').value  = user.name  || '';
-  document.getElementById('pf-email').value = user.email || '';
-  document.getElementById('profile-name').textContent  = user.name  || user.email;
-  document.getElementById('profile-email').textContent = user.email || '';
-  if (user.createdAt) {
-    const d = new Date(user.createdAt);
-    document.getElementById('profile-since').textContent = 'Conta criada em ' + d.toLocaleDateString('pt-BR');
-  }
-
-  // Avatar
-  const initials = (user.name || user.email || 'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  document.getElementById('avatar-initials').textContent = initials;
-  if (user.avatar) {
-    document.getElementById('avatar-big').innerHTML = '<img src="' + user.avatar + '" alt="Foto de perfil" />';
-  }
-
-  // Upload de foto
-  document.getElementById('avatar-big').addEventListener('click', function(){
-    document.getElementById('avatar-input').click();
-  });
-  document.getElementById('avatar-input').addEventListener('change', function(){
-    const file = this.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast('Imagem muito grande. Use até 2MB.', 'err'); return; }
-    const reader = new FileReader();
-    reader.onload = function(e){
-      const src = e.target.result;
-      document.getElementById('avatar-big').innerHTML = '<img src="' + src + '" alt="Foto" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>';
-      // Salva no usuário
-      const u = getLoggedUser();
-      u.avatar = src;
-      setLoggedUser(u);
-      // Salva também na lista de usuários
-      const users = getUsers();
-      const idx = users.findIndex(x => x.email === u.email);
-      if (idx >= 0) { users[idx].avatar = src; saveUsers(users); }
-      // Atualiza sidebar
-      const sideAvatar = document.getElementById('sidebar-avatar');
-      if (sideAvatar) { sideAvatar.innerHTML = '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>'; }
-      const topAvatar = document.getElementById('topbar-avatar');
-      if (topAvatar) { topAvatar.innerHTML = '<img src="' + src + '" style="width:32px;height:32px;object-fit:cover;border-radius:50%"/>'; }
-      toast('Foto atualizada!', 'ok');
-    };
-    reader.readAsDataURL(file);
-  });
-
-  // Salvar nome
-  document.getElementById('btn-salvar-perfil').addEventListener('click', function(){
-    const nome = document.getElementById('pf-nome').value.trim();
-    if (!nome) { toast('Informe seu nome.', 'err'); return; }
-    const u = getLoggedUser();
-    u.name = nome;
-    setLoggedUser(u);
-    const users = getUsers();
-    const idx = users.findIndex(x => x.email === u.email);
-    if (idx >= 0) { users[idx].name = nome; saveUsers(users); }
-    document.getElementById('profile-name').textContent = nome;
-    const nameEl = document.getElementById('sidebar-user-name');
-    if (nameEl) nameEl.textContent = nome;
-    const topName = document.getElementById('topbar-user-name');
-    if (topName) topName.textContent = nome;
-    toast('Perfil atualizado!', 'ok');
-  });
-
-  // Toggle senhas
-  [['toggle-pw-atual','pw-atual'],['toggle-pw-nova','pw-nova'],['toggle-pw-conf','pw-conf']].forEach(([b,i])=>{
-    document.getElementById(b).addEventListener('click',function(){
-      const inp=document.getElementById(i); inp.type=inp.type==='password'?'text':'password';
-    });
-  });
-
-  // Alterar senha
-  document.getElementById('btn-alterar-senha').addEventListener('click', function(){
-    const alertEl  = document.getElementById('alert-pw');
-    const alertMsg = document.getElementById('alert-pw-msg');
-    alertEl.classList.add('hidden');
-
-    const atual = document.getElementById('pw-atual').value;
-    const nova  = document.getElementById('pw-nova').value;
-    const conf  = document.getElementById('pw-conf').value;
-
-    if (!atual) { alertMsg.textContent='Informe sua senha atual.'; alertEl.classList.remove('hidden'); return; }
-    const u = getLoggedUser();
-    if (u.password !== atual) { alertMsg.textContent='Senha atual incorreta.'; alertEl.classList.remove('hidden'); return; }
-    if (!nova || nova.length < 6) { alertMsg.textContent='Nova senha deve ter no mínimo 6 caracteres.'; alertEl.classList.remove('hidden'); return; }
-    if (nova !== conf) { alertMsg.textContent='As senhas não coincidem.'; alertEl.classList.remove('hidden'); return; }
-
-    u.password = nova;
-    setLoggedUser(u);
-    const users = getUsers();
-    const idx = users.findIndex(x => x.email === u.email);
-    if (idx >= 0) { users[idx].password = nova; saveUsers(users); }
-
-    document.getElementById('pw-atual').value = '';
-    document.getElementById('pw-nova').value  = '';
-    document.getElementById('pw-conf').value  = '';
-    toast('Senha alterada com sucesso!', 'ok');
-  });
-
-  // Mobile sidebar
-  const sidebar = document.querySelector('.sidebar');
-  const menuBtn = document.getElementById('menu-btn');
-  if (sidebar && menuBtn) {
-    const overlay = document.createElement('div');
-    overlay.className = 'sidebar-overlay';
-    document.body.appendChild(overlay);
-    menuBtn.addEventListener('click', function(){ sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-    overlay.addEventListener('click', function(){ sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-  }
+  const sidebar=document.querySelector('.sidebar'), menuBtn=document.getElementById('menu-btn');
+  if(sidebar&&menuBtn){ const ov=document.createElement('div'); ov.className='sidebar-overlay'; document.body.appendChild(ov); menuBtn.addEventListener('click',()=>{sidebar.classList.toggle('open');ov.classList.toggle('active');}); ov.addEventListener('click',()=>{sidebar.classList.remove('open');ov.classList.remove('active');}); }
 })();
+</script>
+<script type="module">
+import { auth, db, doc, getDoc, updateDoc, reauthenticateWithCredential, updatePassword, EmailAuthProvider } from './firebase.js';
+
+const user = getLoggedUser();
+if(!user) window.location.href='index.html';
+
+// Carrega dados do Firestore
+(async function(){
+  try {
+    const uDoc = await getDoc(doc(db,'usuarios',user.uid));
+    if(uDoc.exists()){
+      const ud = uDoc.data();
+      document.getElementById('pf-nome').value = ud.name||'';
+      document.getElementById('pf-email').value = ud.email||'';
+      document.getElementById('profile-name').textContent = ud.name||ud.email;
+      document.getElementById('profile-email').textContent = ud.email||'';
+      if(ud.createdAt) document.getElementById('profile-since').textContent='Conta criada em '+new Date(ud.createdAt).toLocaleDateString('pt-BR');
+      const initials=(ud.name||ud.email||'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      if(ud.avatar){
+        document.getElementById('avatar-big').innerHTML='<img src="'+ud.avatar+'" style="width:100%;height:100%;object-fit:cover"/>';
+      } else {
+        document.getElementById('avatar-initials').textContent=initials;
+      }
+    }
+  } catch(e){ console.error(e); }
+})();
+
+// Upload foto
+document.getElementById('avatar-big').addEventListener('click',()=>document.getElementById('avatar-input').click());
+document.getElementById('avatar-input').addEventListener('change', async function(){
+  const file=this.files[0]; if(!file) return;
+  if(file.size>2*1024*1024){ toast('Imagem muito grande. Use até 2MB.','err'); return; }
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    const src=e.target.result;
+    document.getElementById('avatar-big').innerHTML='<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>';
+    try {
+      await updateDoc(doc(db,'usuarios',user.uid),{avatar:src});
+      const u=getLoggedUser(); u.avatar=src; setLoggedUser(u);
+      const sa=document.getElementById('sidebar-avatar');
+      if(sa) sa.innerHTML='<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>';
+      toast('Foto atualizada!','ok');
+    } catch(e){ toast('Erro ao salvar foto.','err'); }
+  };
+  reader.readAsDataURL(file);
+});
+
+// Salvar nome
+document.getElementById('btn-salvar-perfil').addEventListener('click', async function(){
+  const nome=document.getElementById('pf-nome').value.trim();
+  if(!nome){ toast('Informe seu nome.','err'); return; }
+  this.disabled=true; this.textContent='Salvando...';
+  try {
+    await updateDoc(doc(db,'usuarios',user.uid),{name:nome});
+    const u=getLoggedUser(); u.name=nome; setLoggedUser(u);
+    document.getElementById('profile-name').textContent=nome;
+    const nn=document.getElementById('sidebar-user-name'); if(nn) nn.textContent=nome;
+    const tn=document.getElementById('topbar-user-name'); if(tn) tn.textContent=nome;
+    toast('Perfil atualizado!','ok');
+  } catch(e){ toast('Erro ao salvar.','err'); }
+  this.disabled=false; this.textContent='Salvar alterações';
+});
+
+// Toggle senhas
+[['t1','pw-atual'],['t2','pw-nova'],['t3','pw-conf']].forEach(([b,i])=>{
+  document.getElementById(b).addEventListener('click',function(){ const inp=document.getElementById(i); inp.type=inp.type==='password'?'text':'password'; });
+});
+
+// Alterar senha
+document.getElementById('btn-alterar-senha').addEventListener('click', async function(){
+  const alertEl=document.getElementById('alert-pw');
+  const alertMsg=document.getElementById('alert-pw-msg');
+  alertEl.classList.add('hidden');
+  const atual=document.getElementById('pw-atual').value;
+  const nova=document.getElementById('pw-nova').value;
+  const conf=document.getElementById('pw-conf').value;
+  if(!atual){ alertMsg.textContent='Informe sua senha atual.'; alertEl.classList.remove('hidden'); return; }
+  if(!nova||nova.length<6){ alertMsg.textContent='Nova senha deve ter no mínimo 6 caracteres.'; alertEl.classList.remove('hidden'); return; }
+  if(nova!==conf){ alertMsg.textContent='As senhas não coincidem.'; alertEl.classList.remove('hidden'); return; }
+
+  this.disabled=true; this.textContent='Alterando...';
+  try {
+    const fbUser=auth.currentUser;
+    const cred=EmailAuthProvider.credential(fbUser.email, atual);
+    await reauthenticateWithCredential(fbUser, cred);
+    await updatePassword(fbUser, nova);
+    document.getElementById('pw-atual').value='';
+    document.getElementById('pw-nova').value='';
+    document.getElementById('pw-conf').value='';
+    toast('Senha alterada com sucesso!','ok');
+  } catch(err){
+    if(err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'){
+      alertMsg.textContent='Senha atual incorreta.';
+    } else { alertMsg.textContent='Erro ao alterar senha. Tente novamente.'; console.error(err); }
+    alertEl.classList.remove('hidden');
+  }
+  this.disabled=false; this.textContent='Alterar senha';
+});
 </script>
 </body>
 </html>

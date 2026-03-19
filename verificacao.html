@@ -17,18 +17,16 @@
         <h2 class="auth-left-tagline">Um código,<br><em>e você está dentro</em></h2>
         <p class="auth-left-sub">Insira o código de 4 dígitos para confirmar seu e-mail e ativar sua conta.</p>
         <div class="auth-features">
-          <div class="auth-feature"><div class="auth-feature-dot"></div>Código visível no console (F12)</div>
-          <div class="auth-feature"><div class="auth-feature-dot"></div>Em produção, será enviado por e-mail</div>
-          <div class="auth-feature"><div class="auth-feature-dot"></div>Pode solicitar reenvio a qualquer hora</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Código enviado por e-mail</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Também exibido na tela como backup</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Clique no código para preencher</div>
         </div>
       </div>
       <p class="auth-left-foot">© 2025 Junior Substratos · Uso exclusivo interno</p>
     </div>
   </div>
-
   <div class="auth-right">
     <div class="auth-box">
-      <!-- Estado 1: inserir código -->
       <div id="state-code">
         <div style="width:52px;height:52px;border-radius:var(--r-md);background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-700)" stroke-width="2" style="width:24px;height:24px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -36,6 +34,8 @@
         <div class="auth-box-eyebrow">Verificação de e-mail</div>
         <h1 class="auth-box-title">Confirme seu código</h1>
         <p class="auth-box-sub">Enviamos um código de 4 dígitos para <strong id="email-display" style="color:var(--moss-700)">seu e-mail</strong>.</p>
+
+        <div id="code-hint" style="background:var(--moss-100);border:1.5px dashed var(--moss-400);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:13px;color:var(--ink-soft);cursor:pointer;display:none"></div>
 
         <div id="alert-code" class="alert alert-error hidden" style="margin-bottom:14px">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
@@ -48,7 +48,6 @@
           <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d2"/>
           <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d3"/>
         </div>
-
         <button class="btn btn-primary btn-lg" id="btn-confirmar" style="width:100%;justify-content:center;margin-top:16px">
           Confirmar e ativar conta
         </button>
@@ -57,7 +56,6 @@
         </p>
       </div>
 
-      <!-- Estado 2: sucesso -->
       <div id="state-success" class="hidden" style="text-align:center;animation:authReveal .5s ease both">
         <div style="width:64px;height:64px;border-radius:50%;background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-600)" stroke-width="2.5" style="width:28px;height:28px"><path d="M20 6L9 17l-5-5"/></svg>
@@ -75,61 +73,54 @@
 </div>
 <div id="toast"></div>
 <script src="utils.js"></script>
-<script>
-(function(){
-  const pending = JSON.parse(sessionStorage.getItem('js_pending_user') || 'null');
-  if (!pending) { window.location.href = 'cadastro.html'; return; }
+<script type="module">
+import { db, doc, updateDoc, getDoc } from './firebase.js';
 
-  const emailDisplay = document.getElementById('email-display');
-  if (emailDisplay) emailDisplay.textContent = pending.email;
+(async function(){
+  const pending = JSON.parse(sessionStorage.getItem('js_pending_user')||'null');
+  if(!pending){ window.location.href='cadastro.html'; return; }
 
-  // Fallback: mostra código na tela
-  const codeHint = document.createElement('div');
-  codeHint.style.cssText = 'background:var(--moss-100);border:1.5px dashed var(--moss-400);border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:13px;color:var(--ink-soft);cursor:pointer';
-  codeHint.innerHTML = '\u{1F4EC} Verifique seu e-mail. Se não receber, use o código abaixo:<br><strong style="font-size:28px;letter-spacing:8px;color:var(--moss-700);display:block;margin-top:8px">' + pending.code + '</strong><span style="font-size:11px;color:var(--ink-faint)">Clique para preencher automaticamente</span>';
-  codeHint.addEventListener('click', function(){
-    pending.code.split('').forEach((d, i) => {
-      const inp = document.getElementById('d' + i);
-      if (inp) inp.value = d;
-    });
+  document.getElementById('email-display').textContent = pending.email;
+
+  // Mostra código na tela como backup
+  const hint = document.getElementById('code-hint');
+  hint.style.display = 'block';
+  hint.innerHTML = '📬 Verifique seu e-mail. Se não receber, use o código abaixo:<br><strong style="font-size:28px;letter-spacing:8px;color:var(--moss-700);display:block;margin-top:8px">'+pending.code+'</strong><span style="font-size:11px;color:var(--ink-faint)">Clique para preencher automaticamente</span>';
+  hint.addEventListener('click', function(){
+    pending.code.split('').forEach((d,i)=>{ const inp=document.getElementById('d'+i); if(inp) inp.value=d; });
   });
-  const alertBox = document.getElementById('alert-code');
-  if (alertBox) alertBox.parentNode.insertBefore(codeHint, alertBox);
 
   // Navegação entre inputs
-  document.querySelectorAll('.code-digit').forEach((inp, idx, all) => {
-    inp.addEventListener('input', function(){
-      this.value = this.value.replace(/\D/g,'').slice(-1);
-      if (this.value && idx < all.length - 1) all[idx + 1].focus();
-    });
-    inp.addEventListener('keydown', function(e){
-      if (e.key === 'Backspace' && !this.value && idx > 0) all[idx - 1].focus();
-    });
+  document.querySelectorAll('.code-digit').forEach((inp,idx,all)=>{
+    inp.addEventListener('input',function(){ this.value=this.value.replace(/\D/g,'').slice(-1); if(this.value&&idx<all.length-1) all[idx+1].focus(); });
+    inp.addEventListener('keydown',function(e){ if(e.key==='Backspace'&&!this.value&&idx>0) all[idx-1].focus(); });
   });
 
   // Confirmar código
-  document.getElementById('btn-confirmar').addEventListener('click', function(){
-    const entered = [0,1,2,3].map(i => (document.getElementById('d'+i).value||'')).join('');
-    const alertEl = document.getElementById('alert-code');
-    const alertMsg = document.getElementById('alert-code-msg');
-    if (entered.length < 4) {
-      alertMsg.textContent = 'Digite os 4 dígitos do código.';
-      alertEl.classList.remove('hidden'); return;
+  document.getElementById('btn-confirmar').addEventListener('click', async function(){
+    const entered=[0,1,2,3].map(i=>(document.getElementById('d'+i).value||'')).join('');
+    const alertEl=document.getElementById('alert-code');
+    const alertMsg=document.getElementById('alert-code-msg');
+    if(entered.length<4){ alertMsg.textContent='Digite os 4 dígitos do código.'; alertEl.classList.remove('hidden'); return; }
+    if(entered!==pending.code){ alertMsg.textContent='Código incorreto. Tente novamente.'; alertEl.classList.remove('hidden'); return; }
+
+    this.disabled=true; this.textContent='Ativando...';
+    try {
+      // Marca como verificado no Firestore
+      await updateDoc(doc(db,'usuarios',pending.uid),{ verified:true, code:null });
+      sessionStorage.removeItem('js_pending_user');
+      document.getElementById('state-code').classList.add('hidden');
+      document.getElementById('state-success').classList.remove('hidden');
+    } catch(err){
+      alertMsg.textContent='Erro ao ativar conta. Tente novamente.';
+      alertEl.classList.remove('hidden');
+      this.disabled=false; this.textContent='Confirmar e ativar conta';
+      console.error(err);
     }
-    if (entered !== pending.code) {
-      alertMsg.textContent = 'Código incorreto. Tente novamente.';
-      alertEl.classList.remove('hidden'); return;
-    }
-    alertEl.classList.add('hidden');
-    addUser({ name: pending.nome, email: pending.email, password: pending.senha, verified: true, createdAt: Date.now() });
-    sessionStorage.removeItem('js_pending_user');
-    document.getElementById('state-code').classList.add('hidden');
-    document.getElementById('state-success').classList.remove('hidden');
   });
 
-  // Reenviar
-  document.getElementById('btn-reenviar').addEventListener('click', function(){
-    toast('Verifique o e-mail ou use o código exibido acima.', 'info', 4000);
+  document.getElementById('btn-reenviar').addEventListener('click',function(){
+    toast('Verifique o e-mail ou use o código exibido acima.','info',4000);
   });
 })();
 </script>
