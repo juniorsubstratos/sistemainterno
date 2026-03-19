@@ -1008,7 +1008,7 @@ body > * { position: relative; z-index: 1; }
 
   /* Auth pages: esconde coluna esquerda, centraliza formulário */
   .auth-left { display: none; }
-  .auth-right { padding: 32px 20px; background: var(--cream); }
+  .auth-right { padding: 20px 20px; background: var(--cream); }
   .auth-box { max-width: 440px; }
 
   /* Nota: dados empresa/cliente em coluna única */
@@ -1118,18 +1118,21 @@ body > * { position: relative; z-index: 1; }
 /* ── Logo mobile nas páginas de auth ── */
 .auth-mobile-logo {
   display: none;
-  text-align: center;
-  padding: 36px 24px 20px;
-  background: var(--surface);
-}
-.auth-mobile-logo img {
-  height: 88px;
-  width: auto;
-  display: block;
-  margin: 0 auto;
 }
 @media (max-width: 640px) {
   .auth-mobile-logo {
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 28px 24px 20px;
+    background: var(--surface);
+  }
+  .auth-mobile-logo img {
+    height: 88px;
+    width: auto;
+  }
+  .auth-right {
+    padding-top: 16px !important;
+    min-height: auto !important;
   }
 }
