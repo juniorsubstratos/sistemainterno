@@ -1119,12 +1119,14 @@ body > * { position: relative; z-index: 1; }
 .auth-mobile-logo {
   display: none;
   text-align: center;
-  padding: 28px 24px 0;
+  padding: 32px 24px 0;
   background: var(--surface);
 }
 .auth-mobile-logo img {
-  height: 44px;
+  height: 64px;
   width: auto;
+  display: block;
+  margin: 0 auto;
 }
 @media (max-width: 767px) {
   .auth-mobile-logo {
