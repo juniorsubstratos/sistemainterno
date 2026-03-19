@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produtos — Junior Substratos</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .prod-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+    .form-panel { position: sticky; top: calc(var(--topbar-h) + 20px); }
+    .form-panel-head {
+      background: linear-gradient(135deg, var(--moss-900) 0%, var(--moss-700) 100%);
+      padding: 22px 22px 18px;
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
+      position: relative; overflow: hidden;
+    }
+    .form-panel-head::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+    .form-panel-head-eyebrow {
+      font-size: 10px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--moss-300);
+      margin-bottom: 5px; position: relative; z-index: 1;
+    }
+    .form-panel-head-title {
+      font-family: var(--font-display); font-size: 20px; color: #fff;
+      line-height: 1.2; position: relative; z-index: 1;
+    }
+    .form-panel-head-title em { color: var(--moss-300); font-style: italic; }
+    .form-panel-body {
+      background: var(--white);
+      border: 1px solid var(--cream-dark); border-top: none;
+      border-radius: 0 0 var(--r-lg) var(--r-lg);
+      padding: 20px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .form-section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--moss-600);
+      display: flex; align-items: center; gap: 7px;
+      padding-bottom: 8px; border-bottom: 1.5px solid var(--moss-100);
+      margin-bottom: 2px;
+    }
+    .form-section-label svg { width: 12px; height: 12px; }
+    .form-actions { display: flex; gap: 10px; padding-top: 4px; }
+    .form-actions .btn { flex: 1; justify-content: center; }
+
+    /* Modo edição */
+    .form-panel.editing .form-panel-head {
+      background: linear-gradient(135deg, var(--earth-700) 0%, var(--earth-500) 100%);
+    }
+    .form-panel.editing .form-panel-head-eyebrow { color: var(--earth-100); }
+    .form-panel.editing .form-section-label { color: var(--earth-700); border-color: var(--earth-100); }
+
+    /* Preço destaque */
+    .price-input-wrap { position: relative; }
+    .price-prefix {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; font-weight: 600; color: var(--ink-faint);
+      pointer-events: none;
+    }
+    .price-input-wrap .field-input { padding-left: 32px; }
+
+    /* Lista toolbar */
+    .list-toolbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 18px; background: var(--parchment);
+      border-bottom: 1px solid var(--cream-mid); flex-wrap: wrap;
+    }
+    .list-count {
+      font-size: 11px; font-weight: 600; color: var(--ink-light);
+      background: var(--cream-mid); padding: 3px 10px;
+      border-radius: var(--r-full); white-space: nowrap; margin-left: auto;
+    }
+
+    /* Card de produto */
+    .prod-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 13px 18px; border-bottom: 1px solid var(--cream-mid);
+      transition: background var(--trans);
+    }
+    .prod-row:last-child { border-bottom: none; }
+    .prod-row:hover { background: var(--moss-50); }
+
+    .prod-icon {
+      width: 42px; height: 42px; border-radius: var(--r-md);
+      background: var(--earth-100); border: 1.5px solid var(--earth-300);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .prod-icon svg { width: 18px; height: 18px; stroke: var(--earth-700); }
+
+    .prod-info { flex: 1; min-width: 0; }
+    .prod-name {
+      font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .prod-desc {
+      font-size: 11.5px; color: var(--ink-faint); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .prod-code {
+      font-size: 11px; font-weight: 700; color: var(--moss-700);
+      background: var(--moss-100); border: 1px solid var(--moss-200);
+      padding: 3px 9px; border-radius: var(--r-full);
+      font-family: monospace; white-space: nowrap; flex-shrink: 0;
+    }
+
+    .prod-price {
+      font-family: var(--font-display); font-size: 17px;
+      color: var(--moss-700); white-space: nowrap; flex-shrink: 0;
+      min-width: 100px; text-align: right;
+    }
+    .prod-price-label {
+      font-size: 10px; font-weight: 600; color: var(--ink-faint);
+      text-transform: uppercase; letter-spacing: .06em;
+      display: block; text-align: right; margin-top: 1px;
+    }
+
+    .prod-actions { display: flex; gap: 5px; flex-shrink: 0; }
+
+    /* Empty */
+    .empty-list {
+      padding: 56px 24px; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty-list-icon {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: var(--moss-50); border: 2px solid var(--moss-100);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .empty-list-icon svg { width: 28px; height: 28px; stroke: var(--moss-400); }
+    .empty-list h3 { font-family: var(--font-display); font-size: 19px; color: var(--ink-soft); }
+    .empty-list p { font-size: 13px; color: var(--ink-faint); max-width: 240px; line-height: 1.6; }
+
+    @media (max-width: 1050px) {
+      .prod-layout { grid-template-columns: 1fr; }
+      .form-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+<script src="utils.js"></script>
+<script src="sidebar.js"></script>
+<script>requireAuth(); renderSidebar('produtos.html');</script>
+
+<div class="admin-layout">
+  <div class="admin-content">
+
+    <header class="topbar">
+      <button id="menu-btn" class="topbar-menu-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <span class="topbar-title">Junior Substratos</span>
+      <div class="topbar-right">
+        <span class="topbar-clock" id="clock">00:00:00</span>
+        <div class="topbar-user">
+          <div class="topbar-avatar" id="topbar-avatar">U</div>
+          <span id="topbar-user-name"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-heading">Produtos</h1>
+          <p class="page-sub">Gerencie o catálogo de produtos e substratos.</p>
+        </div>
+      </div>
+
+      <div class="prod-layout">
+
+        <!-- ── Formulário ── -->
+        <div class="form-panel" id="form-panel">
+          <div class="form-panel-head">
+            <p class="form-panel-head-eyebrow" id="form-eyebrow">Novo item</p>
+            <h2 class="form-panel-head-title" id="form-title">Cadastrar<br><em>novo produto</em></h2>
+          </div>
+          <div class="form-panel-body">
+
+            <div>
+              <p class="form-section-label">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7l8-5 8 5v6l-8 5-8-5V7z"/><path d="M10 2v18M2 7l8 5 8-5"/></svg>
+                Identificação
+              </p>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:10px">
+                <div class="field">
+                  <label class="field-label" for="f-nome">Nome do Produto <span class="req">*</span></label>
+                  <input class="field-input" type="text" id="f-nome" placeholder="Ex: Substrato Premium 5L" />
+                  <span class="field-error" id="err-nome"></span>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="f-cod">Código / SKU</label>
+                  <input class="field-input" type="text" id="f-cod" placeholder="Ex: SUB-001" style="font-family:monospace;font-size:13px" />
+                </div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:var(--cream-mid)"></div>
+
+            <div>
+              <p class="form-section-label">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M15 3l2 2-6 6H9v-2l6-6z"/></svg>
+                Detalhes
+              </p>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:10px">
+                <div class="field">
+                  <label class="field-label" for="f-desc">Descrição</label>
+                  <textarea class="field-input" id="f-desc" placeholder="Descrição do produto, composição, uso recomendado…" rows="3" style="resize:vertical;min-height:72px"></textarea>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="f-categoria">Categoria</label>
+                  <select class="field-input" id="f-categoria">
+                    <option value="">— Selecione —</option>
+                    <option value="Substrato">Substrato</option>
+                    <option value="Adubo">Adubo / Fertilizante</option>
+                    <option value="Condicionador">Condicionador de Solo</option>
+                    <option value="Semente">Sementes</option>
+                    <option value="Acessório">Acessório</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:var(--cream-mid)"></div>
+
+            <div>
+              <p class="form-section-label">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 9l2-2 3 3 4-5 3 3 2-2"/><path d="M2 16h16"/></svg>
+                Precificação
+              </p>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:10px">
+                <div class="field">
+                  <label class="field-label" for="f-preco">Valor Unitário (R$) <span class="req">*</span></label>
+                  <div class="price-input-wrap">
+                    <span class="price-prefix">R$</span>
+                    <input class="field-input" type="text" id="f-preco" placeholder="0,00" />
+                  </div>
+                  <span class="field-error" id="err-preco"></span>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="f-unidade">Unidade de Medida</label>
+                  <select class="field-input" id="f-unidade">
+                    <option value="un">Unidade (un)</option>
+                    <option value="kg">Quilograma (kg)</option>
+                    <option value="L">Litro (L)</option>
+                    <option value="saco">Saco</option>
+                    <option value="fardo">Fardo</option>
+                    <option value="cx">Caixa (cx)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <input type="hidden" id="edit-id" />
+
+            <div class="form-actions">
+              <button class="btn btn-ghost" id="btn-cancelar" style="display:none">Cancelar</button>
+              <button class="btn btn-primary" id="btn-salvar">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-6H7v6M7 3H3v18h14V7l-4-4z"/><path d="M11 3v4h4"/></svg>
+                Salvar Produto
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Lista ── -->
+        <div class="card" id="list-panel">
+          <div class="list-toolbar">
+            <div class="search-wrap" style="flex:1;min-width:160px">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3"/></svg>
+              <input class="search-input" type="text" id="search" placeholder="Buscar por nome ou código…" style="width:100%" />
+            </div>
+            <span class="list-count" id="list-count">0 produtos</span>
+          </div>
+          <div id="list-body"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Modal exclusão -->
+<div class="modal-overlay" id="modal-del">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Confirmar exclusão</span>
+      <button class="modal-close" id="modal-del-close">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5L5 15M5 5l10 10"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--ink-mid);line-height:1.6">Tem certeza que deseja excluir o produto <strong id="del-nome" style="color:var(--ink-soft)"></strong>? Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="modal-del-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="modal-del-confirm">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
+        Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+(function () {
+  requireAuth();
+  startClock('clock');
+  initSidebar();
+
+  let deletingId = null;
+
+  // Máscara preço
+  document.getElementById('f-preco').addEventListener('blur', function () {
+    const v = parseMoney(this.value);
+    if (v > 0) this.value = v.toFixed(2).replace('.', ',');
+  });
+
+  // ── Renderizar lista ──
+  function renderList(q) {
+    q = (q || '').toLowerCase();
+    const all = getProdutos();
+    const filtered = all.filter(p =>
+      !q ||
+      p.nome.toLowerCase().includes(q) ||
+      (p.codigo && p.codigo.toLowerCase().includes(q))
+    );
+    const body = document.getElementById('list-body');
+    const count = document.getElementById('list-count');
+    count.textContent = filtered.length + ' produto' + (filtered.length !== 1 ? 's' : '');
+
+    if (!filtered.length) {
+      body.innerHTML = `
+        <div class="empty-list">
+          <div class="empty-list-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/></svg>
+          </div>
+          <h3>${q ? 'Nenhum resultado' : 'Catálogo vazio'}</h3>
+          <p>${q ? 'Tente outro termo de busca.' : 'Preencha o formulário ao lado para cadastrar o primeiro produto.'}</p>
+        </div>`;
+      return;
+    }
+
+    body.innerHTML = filtered.map(p => {
+      return `
+        <div class="prod-row">
+          <div class="prod-icon">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 7l8-5 8 5v6l-8 5-8-5V7z"/><path d="M10 2v18M2 7l8 5 8-5"/></svg>
+          </div>
+          <div class="prod-info">
+            <div class="prod-name">${esc(p.nome)}</div>
+            <div class="prod-desc">${p.categoria ? `<span style="color:var(--moss-600);font-weight:600">${esc(p.categoria)}</span>${p.descricao ? ' · ' : ''}` : ''}${p.descricao ? esc(p.descricao) : 'Sem descrição'}</div>
+          </div>
+          ${p.codigo ? `<span class="prod-code">${esc(p.codigo)}</span>` : ''}
+          <div>
+            <div class="prod-price">${fmtBRL(p.preco)}</div>
+            <span class="prod-price-label">por ${esc(p.unidade || 'un')}</span>
+          </div>
+          <div class="prod-actions">
+            <button class="btn btn-ghost btn-sm" data-edit="${p.id}" title="Editar">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 3H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-6"/><path d="M17 1l2 2-9 9H8v-2L17 1z"/></svg>
+              Editar
+            </button>
+            <button class="btn-icon danger" data-del="${p.id}" title="Excluir">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    body.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editProd(b.dataset.edit)));
+    body.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => confirmDel(b.dataset.del)));
+  }
+
+  // ── Editar ──
+  function editProd(id) {
+    const p = getProdutos().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('edit-id').value  = id;
+    document.getElementById('f-nome').value   = p.nome || '';
+    document.getElementById('f-cod').value    = p.codigo || '';
+    document.getElementById('f-desc').value   = p.descricao || '';
+    document.getElementById('f-categoria').value = p.categoria || '';
+    document.getElementById('f-preco').value  = p.preco ? p.preco.toFixed(2).replace('.', ',') : '';
+    document.getElementById('f-unidade').value = p.unidade || 'un';
+
+    document.getElementById('form-eyebrow').textContent   = 'Editando item';
+    document.getElementById('form-title').innerHTML       = 'Editar<br><em>produto</em>';
+    document.getElementById('btn-cancelar').style.display = '';
+    document.getElementById('form-panel').classList.add('editing');
+    document.getElementById('f-nome').focus();
+    document.getElementById('form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Reset ──
+  function resetForm() {
+    document.getElementById('edit-id').value = '';
+    ['f-nome','f-cod','f-desc','f-preco'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.classList.remove('error'); }
+    });
+    document.getElementById('f-categoria').value = '';
+    document.getElementById('f-unidade').value = 'un';
+    ['err-nome','err-preco'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = ''; el.classList.remove('visible'); }
+    });
+    document.getElementById('form-eyebrow').textContent   = 'Novo item';
+    document.getElementById('form-title').innerHTML       = 'Cadastrar<br><em>novo produto</em>';
+    document.getElementById('btn-cancelar').style.display = 'none';
+    document.getElementById('form-panel').classList.remove('editing');
+  }
+
+  document.getElementById('btn-cancelar').addEventListener('click', resetForm);
+
+  // ── Salvar ──
+  document.getElementById('btn-salvar').addEventListener('click', function () {
+    const nome  = document.getElementById('f-nome').value.trim();
+    const preco = parseMoney(document.getElementById('f-preco').value);
+    let ok = true;
+
+    ['err-nome','err-preco'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = ''; el.classList.remove('visible'); }
+    });
+    ['f-nome','f-preco'].forEach(id => document.getElementById(id)?.classList.remove('error'));
+
+    if (!nome) {
+      document.getElementById('err-nome').textContent = 'Informe o nome do produto';
+      document.getElementById('err-nome').classList.add('visible');
+      document.getElementById('f-nome').classList.add('error');
+      ok = false;
+    }
+    if (!document.getElementById('f-preco').value.trim() || preco <= 0) {
+      document.getElementById('err-preco').textContent = 'Informe o valor unitário';
+      document.getElementById('err-preco').classList.add('visible');
+      document.getElementById('f-preco').classList.add('error');
+      ok = false;
+    }
+    if (!ok) return;
+
+    const editId = document.getElementById('edit-id').value;
+    const produtos = getProdutos();
+    const data = {
+      id:        editId || uid(),
+      nome,
+      codigo:    document.getElementById('f-cod').value.trim(),
+      descricao: document.getElementById('f-desc').value.trim(),
+      categoria: document.getElementById('f-categoria').value,
+      preco,
+      unidade:   document.getElementById('f-unidade').value,
+      criadoEm:  editId ? (produtos.find(p => p.id === editId)?.criadoEm || Date.now()) : Date.now(),
+    };
+
+    if (editId) {
+      const idx = produtos.findIndex(p => p.id === editId);
+      if (idx > -1) produtos[idx] = data; else produtos.push(data);
+      toast('Produto atualizado!', 'ok');
+    } else {
+      produtos.push(data);
+      toast('Produto salvo com sucesso!', 'ok');
+    }
+
+    saveProdutos(produtos);
+    resetForm();
+    renderList(document.getElementById('search').value);
+  });
+
+  // ── Excluir ──
+  function confirmDel(id) {
+    const p = getProdutos().find(x => x.id === id);
+    if (!p) return;
+    deletingId = id;
+    document.getElementById('del-nome').textContent = p.nome;
+    document.getElementById('modal-del').classList.add('open');
+  }
+
+  document.getElementById('modal-del-close').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
+  document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
+  document.getElementById('modal-del-confirm').addEventListener('click', function () {
+    if (!deletingId) return;
+    saveProdutos(getProdutos().filter(p => p.id !== deletingId));
+    deletingId = null;
+    document.getElementById('modal-del').classList.remove('open');
+    renderList(document.getElementById('search').value);
+    toast('Produto excluído.', 'info');
+  });
+
+  // ── Busca ──
+  document.getElementById('search').addEventListener('input', function () { renderList(this.value); });
+
+  // ── Init ──
+  renderList();
+})();
+</script>
+<script>
+</script>
+<script>
+  (function() {
+    const sidebar = document.querySelector('.sidebar');
+    const menuBtn = document.getElementById('menu-btn');
+    if (!sidebar || !menuBtn) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+    menuBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    });
+    overlay.addEventListener('click', function() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      });
+    });
+  })();
+</script>
+</body>
+</html>

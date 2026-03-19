@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verificação — Junior Substratos</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <div class="auth-left-logo">
+        <img src="juniorsubstratos.svg" alt="Junior Substratos" class="logo-white logo-auth" />
+      </div>
+      <div class="auth-left-body">
+        <div class="auth-leaf-deco"></div>
+        <h2 class="auth-left-tagline">Um código,<br><em>e você está dentro</em></h2>
+        <p class="auth-left-sub">Insira o código de 4 dígitos para confirmar seu e-mail e ativar sua conta.</p>
+        <div class="auth-features">
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Código visível no console (F12)</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Em produção, será enviado por e-mail</div>
+          <div class="auth-feature"><div class="auth-feature-dot"></div>Pode solicitar reenvio a qualquer hora</div>
+        </div>
+      </div>
+      <p class="auth-left-foot">© 2025 Junior Substratos · Uso exclusivo interno</p>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box">
+      <!-- Estado 1: inserir código -->
+      <div id="state-code">
+        <div style="width:52px;height:52px;border-radius:var(--r-md);background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-700)" stroke-width="2" style="width:24px;height:24px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="auth-box-eyebrow">Verificação de e-mail</div>
+        <h1 class="auth-box-title">Confirme seu código</h1>
+        <p class="auth-box-sub">Enviamos um código de 4 dígitos para <strong id="email-display" style="color:var(--moss-700)">seu e-mail</strong>.</p>
+
+        <div id="alert-code" class="alert alert-error hidden" style="margin-bottom:14px">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="8"/><path d="M10 6v4M10 14h.01"/></svg>
+          <span id="alert-code-msg"></span>
+        </div>
+
+        <div class="code-inputs">
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d0"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d1"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d2"/>
+          <input class="code-digit" maxlength="1" type="text" inputmode="numeric" id="d3"/>
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="btn-confirmar" style="width:100%;justify-content:center;margin-top:16px">
+          Confirmar e ativar conta
+        </button>
+        <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--ink-faint)">
+          Não recebeu?&nbsp;<button class="auth-link" id="btn-reenviar">Reenviar código</button>
+        </p>
+      </div>
+
+      <!-- Estado 2: sucesso -->
+      <div id="state-success" class="hidden" style="text-align:center;animation:authReveal .5s ease both">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--moss-100);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--moss-600)" stroke-width="2.5" style="width:28px;height:28px"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div class="auth-box-eyebrow" style="justify-content:center">Concluído</div>
+        <h1 class="auth-box-title" style="text-align:center">Conta ativada!</h1>
+        <p style="font-size:13px;color:var(--ink-light);margin:8px 0 24px;line-height:1.6">Seu cadastro foi concluído. Agora você já pode fazer login no sistema.</p>
+        <a href="index.html" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;display:inline-flex">
+          Ir para o login
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6M15 10H3"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="utils.js"></script>
+<script>
+(function(){
+  const pending=JSON.parse(sessionStorage.getItem('js_pending_user')||'null');
+  if(!pending){window.location.href='cadastro.html';return;}
+  document.getElementById('email-display').textContent=pending.email;
+  document.getElementById('code-demo-val').textContent=pending.code;
+  console.log(`[Junior Substratos] Código para ${pending.email}: ${pending.code}`);
+
+  const digits=[0,1,2,3].map(i=>document.getElementById('d'+i));
+  digits.forEach((inp,idx)=>{
+    inp.addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(-1);if(this.value&&idx<3)digits[idx+1].focus();this.classList.toggle('filled',!!this.value);});
+    inp.addEventListener('keydown',function(e){if(e.key==='Backspace'&&!this.value&&idx>0){digits[idx-1].focus();digits[idx-1].value='';digits[idx-1].classList.remove('filled');}});
+    inp.addEventListener('paste',function(e){e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');t.split('').slice(0,4).forEach((ch,i)=>{if(digits[i]){digits[i].value=ch;digits[i].classList.add('filled');}});if(digits[Math.min(t.length,3)])digits[Math.min(t.length,3)].focus();});
+  });
+  digits[0].focus();
+
+  function showErr(m){document.getElementById('alert-code-msg').textContent=m;document.getElementById('alert-code').classList.remove('hidden');}
+  function hideErr(){document.getElementById('alert-code').classList.add('hidden');}
+
+  document.getElementById('btn-confirmar').addEventListener('click',function(){
+    hideErr();
+    const entered=digits.map(d=>d.value).join('');
+    if(entered.length<4){showErr('Digite o código completo de 4 dígitos.');return;}
+    if(entered!==pending.code){showErr('Código incorreto. Verifique e tente novamente.');return;}
+    addUser({id:uid(),email:pending.email,name:pending.nome,password:pending.senha,verified:true});
+    sessionStorage.removeItem('js_pending_user');
+    document.getElementById('state-code').classList.add('hidden');
+    document.getElementById('state-success').classList.remove('hidden');
+    toast('Conta ativada!','ok');
+  });
+
+  document.getElementById('btn-reenviar').addEventListener('click',function(){
+    const nc=String(Math.floor(1000+Math.random()*9000));
+    pending.code=nc; sessionStorage.setItem('js_pending_user',JSON.stringify(pending));
+    document.getElementById('code-demo-val').textContent=nc;
+    console.log(`[Junior Substratos] Novo código: ${nc}`);
+    toast('Código reenviado!','info');
+    digits.forEach(d=>{d.value='';d.classList.remove('filled');}); digits[0].focus(); hideErr();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Histórico de Notas — Junior Substratos</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+<script src="utils.js"></script>
+<script src="sidebar.js"></script>
+<script>requireAuth(); renderSidebar('historico.html');</script>
+
+<div class="admin-layout">
+  <div class="admin-content">
+
+    <header class="topbar">
+      <button id="menu-btn" class="topbar-menu-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <span class="topbar-title">Junior Substratos</span>
+      <div class="topbar-right">
+        <span class="topbar-clock" id="clock">00:00:00</span>
+        <div class="topbar-user">
+          <div class="topbar-avatar" id="topbar-avatar">U</div>
+          <span id="topbar-user-name">Usuário</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-heading">Histórico de Notas</h1>
+          <p class="page-sub">Visualize, reimprima e gerencie todas as notas emitidas.</p>
+        </div>
+        <div class="page-actions">
+          <a href="nota.html" class="btn btn-primary">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M6 10h8"/></svg>
+            Nova Nota
+          </a>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card anim" style="margin-bottom:20px">
+        <div class="card-body" style="padding:14px 18px">
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div class="search-wrap" style="flex:1;min-width:180px">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3"/></svg>
+              <input class="search-input" type="text" id="search-hist" placeholder="Buscar por número ou cliente…" style="width:100%" />
+            </div>
+            <div class="field" style="min-width:140px;margin:0">
+              <input class="field-input" type="date" id="filter-de" style="padding:7px 10px;font-size:12px" title="De" />
+            </div>
+            <span style="font-size:12px;color:var(--gray-400)">até</span>
+            <div class="field" style="min-width:140px;margin:0">
+              <input class="field-input" type="date" id="filter-ate" style="padding:7px 10px;font-size:12px" title="Até" />
+            </div>
+            <button class="btn btn-ghost btn-sm" id="btn-limpar-filtro">Limpar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Listagem -->
+      <div class="card anim">
+        <div class="card-header">
+          <span class="card-title">Notas Emitidas</span>
+          <span id="hist-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div id="hist-list"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Modal visualizar nota -->
+<div class="modal-overlay" id="modal-view" style="align-items:flex-start;padding:24px;overflow-y:auto">
+  <div class="modal" style="max-width:800px;width:95%;margin:auto">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-view-title">Nota de Pedido</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary btn-sm no-print" id="btn-modal-print">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h8v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h12a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h8v6H6v-6z"/></svg>
+          Imprimir
+        </button>
+        <button class="btn btn-primary btn-sm no-print" id="btn-modal-pdf">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z"/><path d="M9 13l2 2 4-4"/></svg>
+          Exportar PDF
+        </button>
+        <button class="modal-close" id="modal-view-close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5L5 15M5 5l10 10"/></svg></button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:0" id="modal-nota-body">
+      <!-- nota renderizada aqui -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmar exclusão -->
+<div class="modal-overlay" id="modal-del">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Excluir nota</span>
+      <button class="modal-close" id="modal-del-close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5L5 15M5 5l10 10"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--gray-600)">Tem certeza que deseja excluir a nota <strong id="del-num"></strong>? Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="modal-del-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="modal-del-confirm">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
+        Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF overlay -->
+<div class="pdf-overlay hidden" id="pdf-overlay">
+  <div class="pdf-box"><div class="pdf-spinner"></div><p>Gerando PDF…</p></div>
+</div>
+
+<div id="toast"></div>
+<script>
+(function() {
+  requireAuth();
+  startClock('clock');
+  initSidebar();
+
+  let deletingId = null;
+  let viewingNota = null;
+
+  // ── Render lista ──
+  function renderList() {
+    const q   = document.getElementById('search-hist').value.trim().toLowerCase();
+    const de  = document.getElementById('filter-de').value;
+    const ate = document.getElementById('filter-ate').value;
+
+    const all = [...getNotas()].sort((a,b) => b.createdAt - a.createdAt);
+    const filtered = all.filter(n => {
+      const matchQ = !q || n.num.toLowerCase().includes(q) || n.cliente.toLowerCase().includes(q);
+      const matchDe  = !de  || (n.data && n.data >= de);
+      const matchAte = !ate || (n.data && n.data <= ate);
+      return matchQ && matchDe && matchAte;
+    });
+
+    document.getElementById('hist-count').textContent = `${filtered.length} nota${filtered.length !== 1 ? 's' : ''}`;
+
+    const container = document.getElementById('hist-list');
+    if (!filtered.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 4h24a2 2 0 012 2v36a2 2 0 01-2 2H12a2 2 0 01-2-2V6a2 2 0 012-2z"/><path d="M18 14h12M18 20h12M18 26h8"/></svg>
+          <p>${q ? `Nenhuma nota encontrada para "<strong>${esc(q)}</strong>".` : '<strong>Nenhuma nota emitida ainda.</strong><br>Crie sua primeira nota de pedido.'}</p>
+        </div>`;
+      return;
+    }
+
+    const rows = filtered.map(n => `
+      <tr>
+        <td>
+          <span style="font-weight:800;color:var(--g2);font-size:13px">${esc(n.num)}</span>
+        </td>
+        <td>
+          <div style="font-weight:600;color:var(--gray-700)">${esc(n.cliente)}</div>
+        </td>
+        <td>${isoToDisplay(n.data)}</td>
+        <td style="font-weight:700;color:var(--g2);text-align:right">${fmtBRL(n.total)}</td>
+        <td style="text-align:center">
+          <span class="badge badge-success">${esc(n.status || 'Emitida')}</span>
+        </td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-secondary btn-sm" data-view="${esc(n.id)}" style="margin-right:4px">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg>
+            Visualizar
+          </button>
+          <button class="btn btn-sm" style="background:#fdf0ee;color:var(--danger);border:1.5px solid #f5b7b1" data-del="${esc(n.id)}">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Nº Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Total</th><th class="text-center">Status</th><th class="text-right">Ações</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="padding:10px 16px;font-size:11px;color:var(--gray-400);border-top:1px solid var(--gray-100)">
+        Total geral filtrado: <strong>${fmtBRL(filtered.reduce((s,n)=>s+(n.total||0),0))}</strong>
+      </div>`;
+
+    container.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => openView(btn.dataset.view)));
+    container.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => confirmDel(btn.dataset.del)));
+  }
+
+  // ── Visualizar nota ──
+  function openView(id) {
+    const n = getNotas().find(x => x.id === id);
+    if (!n) return;
+    viewingNota = n;
+    document.getElementById('modal-view-title').textContent = `Nota ${n.num}`;
+
+    const emp = n.empresa || {};
+    const cli = n.clienteData || {};
+
+    const itensRows = (n.items || []).map((item, idx) => `
+      <tr>
+        <td class="col-num">${idx+1}</td>
+        <td>${esc(item.desc || '')}</td>
+        <td style="text-align:right">${item.qty || 1}</td>
+        <td style="text-align:right">${fmtBRL(item.unit)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--g2)">${fmtBRL(item.total)}</td>
+      </tr>
+    `).join('');
+
+    const totalItems = (n.items || []).reduce((s,i) => s+(i.total||0), 0);
+    const disc = totalItems - n.total;
+    const discPct = totalItems > 0 ? ((disc/totalItems)*100).toFixed(1) : 0;
+
+    document.getElementById('modal-nota-body').innerHTML = `
+      <div id="nota-print-content">
+        <!-- Header verde -->
+        <div style="background:linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%);padding:20px 22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:16px;font-weight:800;color:#fff">Junior Substratos</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em">Nota de Pedido</div>
+          </div>
+          <div style="text-align:right">
+            <div style="background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.28);color:#fff;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:2px 10px;border-radius:4px;display:inline-block;margin-bottom:6px">NOTA DE PEDIDO</div>
+            <div style="font-size:11px;color:#fff;font-weight:700">${esc(n.num)}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.7)">${isoToDisplay(n.data)}</div>
+            ${n.resp ? `<div style="font-size:11px;color:rgba(255,255,255,.7)">${esc(n.resp)}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Empresa + Cliente -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--gray-100)">
+          <div style="padding:14px 18px;border-right:1px solid var(--gray-100)">
+            <div style="font-size:10px;font-weight:800;color:var(--g2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Dados da Empresa</div>
+            <div style="font-weight:700;font-size:13px">${esc(emp.razao || 'Junior Substratos')}</div>
+            ${emp.cnpj ? `<div style="font-size:12px;color:var(--gray-500)">CNPJ: ${esc(emp.cnpj)}</div>` : ''}
+            ${emp.end  ? `<div style="font-size:12px;color:var(--gray-500)">${esc(emp.end)}</div>` : ''}
+            ${emp.tel  ? `<div style="font-size:12px;color:var(--gray-500)">${esc(emp.tel)}</div>` : ''}
+            ${emp.email? `<div style="font-size:12px;color:var(--gray-500)">${esc(emp.email)}</div>` : ''}
+          </div>
+          <div style="padding:14px 18px">
+            <div style="font-size:10px;font-weight:800;color:var(--g2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Dados do Cliente</div>
+            <div style="font-weight:700;font-size:13px">${esc(cli.nome || n.cliente)}</div>
+            ${cli.cpfcnpj ? `<div style="font-size:12px;color:var(--gray-500)">${esc(cli.cpfcnpj)}</div>` : ''}
+            ${cli.endereco? `<div style="font-size:12px;color:var(--gray-500)">${esc(cli.endereco)}</div>` : ''}
+            ${cli.tel     ? `<div style="font-size:12px;color:var(--gray-500)">${esc(cli.tel)}</div>` : ''}
+            ${cli.email   ? `<div style="font-size:12px;color:var(--gray-500)">${esc(cli.email)}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Itens -->
+        <div style="border-bottom:1px solid var(--gray-100)">
+          <div style="padding:10px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-100);font-size:10px;font-weight:800;color:var(--g2);text-transform:uppercase;letter-spacing:.1em">Itens do Pedido</div>
+          <div style="overflow-x:auto">
+            <table class="items-table">
+              <thead><tr><th class="col-num">#</th><th>Descrição</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead>
+              <tbody>${itensRows || '<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px">Sem itens registrados.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Totais + Obs -->
+        <div style="display:flex;gap:16px;padding:16px 18px;flex-wrap:wrap;align-items:flex-start;border-bottom:1px solid var(--gray-100)">
+          <div style="flex:1;min-width:160px">
+            ${n.obs ? `<div style="font-size:10px;font-weight:800;color:var(--g2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Observações</div><p style="font-size:12px;color:var(--gray-600);line-height:1.6">${esc(n.obs)}</p>` : ''}
+          </div>
+          <div style="width:240px;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:var(--r-lg);padding:14px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px">
+              <span style="color:var(--gray-500)">Subtotal</span>
+              <span style="font-weight:700">${fmtBRL(totalItems)}</span>
+            </div>
+            ${disc > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px">
+              <span style="color:var(--gray-500)">Desconto (${discPct}%)</span>
+              <span style="font-weight:700;color:var(--danger)">— ${fmtBRL(disc)}</span>
+            </div>` : ''}
+            <div style="height:1.5px;background:var(--gray-200);margin:8px 0"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;font-weight:800;color:var(--g1);text-transform:uppercase;letter-spacing:.04em">TOTAL</span>
+              <span style="font-size:18px;font-weight:800;color:var(--g2)">${fmtBRL(n.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:var(--g2);padding:8px 22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,.5)">Junior Substratos · Emitido em ${isoToDisplay(n.data)}</p>
+          <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,.5)">Documento de uso interno.</p>
+        </div>
+      </div>`;
+
+    document.getElementById('modal-view').classList.add('open');
+  }
+
+  // ── Confirmar exclusão ──
+  function confirmDel(id) {
+    const n = getNotas().find(x => x.id === id);
+    if (!n) return;
+    deletingId = id;
+    document.getElementById('del-num').textContent = n.num;
+    document.getElementById('modal-del').classList.add('open');
+  }
+
+  document.getElementById('modal-del-close').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
+  document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
+  document.getElementById('modal-del-confirm').addEventListener('click', function() {
+    if (!deletingId) return;
+    saveNotas(getNotas().filter(n => n.id !== deletingId));
+    deletingId = null;
+    document.getElementById('modal-del').classList.remove('open');
+    renderList();
+    toast('Nota excluída.', 'info');
+  });
+
+  // ── Fechar modal view ──
+  document.getElementById('modal-view-close').addEventListener('click', () => {
+    document.getElementById('modal-view').classList.remove('open');
+    viewingNota = null;
+  });
+  document.getElementById('modal-view').addEventListener('click', function(e) {
+    if (e.target === this) { this.classList.remove('open'); viewingNota = null; }
+  });
+
+  // ── Imprimir nota ──
+  document.getElementById('btn-modal-print').addEventListener('click', function() {
+    const content = document.getElementById('nota-print-content');
+    if (!content) return;
+    const orig = document.body.innerHTML;
+    document.body.innerHTML = `<style>@import url('style.css');body{background:#fff;padding:16px}${Array.from(document.querySelectorAll('link[rel=stylesheet]')).map(l=>`@import url('${l.href}');`).join('')}</style>` + content.outerHTML;
+    window.print();
+    document.body.innerHTML = orig;
+    window.location.reload();
+  });
+
+  // ── PDF ──
+  document.getElementById('btn-modal-pdf').addEventListener('click', async function() {
+    if (!viewingNota) return;
+    const num = (viewingNota.num || 'nota').replace(/[^a-zA-Z0-9-_]/g,'');
+    const cli = (viewingNota.cliente || 'cliente').replace(/\s+/g,'-').slice(0,20);
+    await exportToPDF('nota-print-content', `${num}_${cli}.pdf`);
+  });
+
+  // ── Filtros ──
+  document.getElementById('search-hist').addEventListener('input', renderList);
+  document.getElementById('filter-de').addEventListener('change', renderList);
+  document.getElementById('filter-ate').addEventListener('change', renderList);
+  document.getElementById('btn-limpar-filtro').addEventListener('click', function() {
+    document.getElementById('search-hist').value = '';
+    document.getElementById('filter-de').value = '';
+    document.getElementById('filter-ate').value = '';
+    renderList();
+  });
+
+  // ── Init ──
+  renderList();
+})();
+</script>
+<script>
+</script>
+<script>
+  (function() {
+    const sidebar = document.querySelector('.sidebar');
+    const menuBtn = document.getElementById('menu-btn');
+    if (!sidebar || !menuBtn) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+    menuBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    });
+    overlay.addEventListener('click', function() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      });
+    });
+  })();
+</script>
+</body>
+</html>
