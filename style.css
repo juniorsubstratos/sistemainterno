@@ -1116,20 +1116,17 @@ body > * { position: relative; z-index: 1; }
 }
 
 /* ── Logo mobile nas páginas de auth ── */
-.auth-mobile-logo {
-  display: none;
-  text-align: center;
-  padding: 32px 24px 0;
-  background: var(--surface);
-}
-.auth-mobile-logo img {
-  height: 64px;
-  width: auto;
-  display: block;
-  margin: 0 auto;
-}
 @media (max-width: 767px) {
   .auth-mobile-logo {
-    display: block;
+    display: block !important;
+    text-align: center !important;
+    padding: 32px 24px 16px !important;
+    background: var(--surface);
+  }
+  .auth-mobile-logo img {
+    height: 72px !important;
+    width: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
   }
 }
