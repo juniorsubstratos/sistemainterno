@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gerar Nota de Pedido — Junior Substratos</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <script src="utils.js"></script>
@@ -593,7 +591,186 @@
 
     // Exporta PDF
     const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
-    await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
+    // Gera PDF via HTML limpo (sem html2canvas)
+    const _g = id => { const el = document.getElementById(id); return el ? (el.value||'') : ''; };
+    const _t = id => { const el = document.getElementById(id); return el ? (el.textContent||'') : ''; };
+
+    const pdfRows = [];
+    document.querySelectorAll('#items-tbody tr:not(#empty-row)').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 5) pdfRows.push({
+        n: tds[0].textContent.trim(),
+        d: tds[1].textContent.trim(),
+        q: tds[2].textContent.trim(),
+        u: tds[3].textContent.trim(),
+        t: tds[4].textContent.trim()
+      });
+    });
+
+    const pdfData = {
+      num: _g('num-pedido'), dataRaw: _g('data-pedido'), resp: _g('responsavel'),
+      eRazao: _g('emp-razao'), eCnpj: _g('emp-cnpj'), eEnd: _g('emp-end'),
+      eTel: _g('emp-tel'), eEmail: _g('emp-email'),
+      cNome: _g('cli-nome'), cDoc: _g('cli-cpfcnpj'), cEnd: _g('cli-end'),
+      cTel: _g('cli-tel'), cEmail: _g('cli-email'),
+      obs: (document.getElementById('obs')||{}).value||'',
+      sub: _t('val-sub'), disc: _t('val-disc'), discPct: _g('disc-pct'), total: _t('val-total'),
+    };
+
+    // Formata data
+    let dataFmt = pdfData.dataRaw;
+    if (dataFmt && dataFmt.includes('-')) { const [y,m,d]=dataFmt.split('-'); dataFmt=d+'/'+m+'/'+y; }
+
+    const pdfRowsHtml = pdfRows.length
+      ? pdfRows.map(r=>`<tr><td style="text-align:center;color:#666;width:36px">${r.n}</td><td>${r.d}</td><td style="text-align:right;width:60px">${r.q}</td><td style="text-align:right;width:100px">${r.u}</td><td style="text-align:right;width:100px;font-weight:600">${r.t}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
+
+    let logoSvg = '';
+    try { const r=await fetch('juniorsubstratos.svg'); logoSvg=await r.text(); } catch(e){}
+
+    const pdfHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
+<title>${pdfData.num}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#222;background:#fff}
+.page{width:210mm;margin:0 auto;background:#fff}
+.hdr{background:#235d47;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
+.hdr-logo{width:150px;display:flex;align-items:center}
+.hdr-logo svg{width:150px;height:auto}
+.hdr-logo svg .cls-1,.hdr-logo svg path[fill="#235d47"]{fill:#fff!important}
+.hdr-logo svg .cls-2,.hdr-logo svg .cls-3,.hdr-logo svg path[fill="#47b06b"]{fill:#a8d5b5!important}
+.hdr-lbl{font-size:10px;letter-spacing:.1em;opacity:.7;margin-left:10px;align-self:flex-end;padding-bottom:4px}
+.badge{border:1px solid rgba(255,255,255,.5);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.08em;margin-bottom:6px;display:inline-block}
+.meta{text-align:right;font-size:11px}
+.meta-row{margin-bottom:2px}
+.meta-lbl{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.05em;margin-right:4px}
+.meta-val{font-weight:700}
+.sec{border-bottom:1px solid #e5e5e5}
+.sec-hdr{background:#f6f6f4;padding:8px 18px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#235d47;border-bottom:1px solid #e5e5e5}
+.sec-body{padding:12px 18px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:3px}
+.fv{font-size:12px;color:#222;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafafa;min-height:28px;word-break:break-word}
+.cols2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e5}
+.cl{border-right:1px solid #e5e5e5}
+table{width:100%;border-collapse:collapse}
+th{background:#235d47;color:#fff;padding:7px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;vertical-align:top}
+.tot-wrap{display:flex;gap:24px;padding:12px 18px}
+.obs-wrap{flex:1}
+.obs-box{border:1px solid #ddd;border-radius:4px;padding:8px;min-height:60px;font-size:11px;color:#444;white-space:pre-wrap}
+.tot-tbl{min-width:200px}
+.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}
+.tf{font-size:15px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:6px;padding-top:6px}
+.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:24px 40px}
+.sig-line{border-bottom:1.5px solid #333;height:38px;margin-bottom:6px}
+.sig-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;color:#555}
+.sig-sub{font-size:10px;text-align:center;color:#888;margin-top:3px}
+.ftr{background:#235d47;color:rgba(255,255,255,.7);font-size:9px;padding:7px 22px;display:flex;justify-content:space-between}
+@media print{@page{margin:0;size:A4}body{background:#fff}.page{width:100%}}
+</style></head><body>
+<div class="page">
+<div class="hdr">
+  <div style="display:flex;align-items:center">
+    <div class="hdr-logo">${logoSvg}</div>
+    <span class="hdr-lbl">NOTA DE PEDIDO</span>
+  </div>
+  <div>
+    <div class="badge">NOTA DE PEDIDO</div>
+    <div class="meta">
+      <div class="meta-row"><span class="meta-lbl">Nº Pedido</span><span class="meta-val">${pdfData.num}</span></div>
+      <div class="meta-row"><span class="meta-lbl">Data</span><span class="meta-val">${dataFmt}</span></div>
+      <div class="meta-row"><span class="meta-lbl">Vendedor(a)</span><span class="meta-val">${pdfData.resp||'—'}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">Informações do Pedido</div>
+  <div class="sec-body">
+    <div class="g2" style="margin-bottom:10px">
+      <div><div class="fl">Número do Pedido</div><div class="fv">${pdfData.num}</div></div>
+      <div><div class="fl">Data</div><div class="fv">${dataFmt}</div></div>
+    </div>
+    <div><div class="fl">Vendedor(a)</div><div class="fv">${pdfData.resp||'—'}</div></div>
+  </div>
+</div>
+
+<div class="cols2">
+  <div class="cl">
+    <div class="sec-hdr">Dados da Empresa</div>
+    <div class="sec-body">
+      <div style="margin-bottom:8px"><div class="fl">Razão Social</div><div class="fv">${pdfData.eRazao||'—'}</div></div>
+      <div style="margin-bottom:8px"><div class="fl">CNPJ</div><div class="fv">${pdfData.eCnpj||'—'}</div></div>
+      <div style="margin-bottom:8px"><div class="fl">Endereço</div><div class="fv">${pdfData.eEnd||'—'}</div></div>
+      <div class="g2">
+        <div><div class="fl">Telefone</div><div class="fv">${pdfData.eTel||'—'}</div></div>
+        <div><div class="fl">E-mail</div><div class="fv">${pdfData.eEmail||'—'}</div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="sec-hdr">Dados do Cliente</div>
+    <div class="sec-body">
+      <div style="margin-bottom:8px"><div class="fl">Nome / Razão Social</div><div class="fv">${pdfData.cNome||'—'}</div></div>
+      <div style="margin-bottom:8px"><div class="fl">CPF / CNPJ</div><div class="fv">${pdfData.cDoc||'—'}</div></div>
+      <div style="margin-bottom:8px"><div class="fl">Endereço</div><div class="fv">${pdfData.cEnd||'—'}</div></div>
+      <div class="g2">
+        <div><div class="fl">Telefone</div><div class="fv">${pdfData.cTel||'—'}</div></div>
+        <div><div class="fl">E-mail</div><div class="fv">${pdfData.cEmail||'—'}</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">Itens do Pedido</div>
+  <table>
+    <thead><tr>
+      <th style="text-align:center">#</th>
+      <th style="text-align:left">Descrição do Item</th>
+      <th style="text-align:right">Qtd</th>
+      <th style="text-align:right">Valor Unit.</th>
+      <th style="text-align:right">Total</th>
+    </tr></thead>
+    <tbody>${pdfRowsHtml}</tbody>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="tot-wrap">
+    <div class="obs-wrap">
+      <div class="fl" style="margin-bottom:6px">Observações</div>
+      <div class="obs-box">${pdfData.obs||''}</div>
+    </div>
+    <div class="tot-tbl">
+      <div class="tr"><span>Subtotal</span><span>${pdfData.sub}</span></div>
+      <div class="tr"><span>Desconto (${pdfData.discPct||0}%)</span><span>${pdfData.disc}</span></div>
+      <div class="tr tf"><span>TOTAL FINAL</span><span>${pdfData.total}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">Assinaturas</div>
+  <div class="sig-grid">
+    <div><div class="sig-line"></div><div class="sig-lbl">Vendedor(a)</div><div class="sig-sub">${pdfData.resp||'—'}</div></div>
+    <div><div class="sig-line"></div><div class="sig-lbl">Assinatura do Cliente</div><div class="sig-sub">${pdfData.cNome||''}</div></div>
+  </div>
+</div>
+
+<div class="ftr">
+  <span>Junior Substratos · Emitido em ${dataFmt}</span>
+  <span>Documento de uso interno. Não possui valor fiscal.</span>
+</div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},400);}</script>
+</body></html>`;
+
+    const blob = new Blob([pdfHtml], {type:'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    toast('Nota gerada! Salve como PDF na janela que abriu.', 'ok', 5000);
   });
 
   // ── Imprimir ──
