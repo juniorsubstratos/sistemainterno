@@ -261,102 +261,82 @@ async function exportToPDF(elementId, filename) {
 
   try {
     const { jsPDF } = window.jspdf;
-    const element = document.getElementById(elementId);
+    const element   = document.getElementById(elementId);
+
+    // Adiciona classe que ativa CSS de limpeza de campos
+    document.body.classList.add('pdf-generating');
+
+    // Aguarda o browser aplicar os estilos
+    await new Promise(r => setTimeout(r, 120));
 
     const canvas = await html2canvas(element, {
-      scale: 2.5,
-      useCORS: true,
+      scale:           2.5,
+      useCORS:         true,
+      allowTaint:      true,
       backgroundColor: '#ffffff',
-      logging: false,
-      onclone: function(doc) {
-        const el = doc.getElementById(elementId);
+      logging:         false,
+      imageTimeout:    0,
+      onclone: function(clonedDoc) {
+        const el = clonedDoc.getElementById(elementId);
         if (!el) return;
 
-        // Esconde elementos que não devem aparecer
-        el.querySelectorAll('.no-print, .col-del, .btn-add-row, #btn-buscar-cli, .sec-action').forEach(function(e) {
-          e.style.display = 'none';
+        // Copia o estilo de limpeza para o documento clonado
+        var st = clonedDoc.createElement('style');
+        st.textContent = `
+          * { box-sizing: border-box; }
+          input, textarea, select {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+          }
+          .field-input, .table-input, .disc-input {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 1px 0 !important;
+          }
+          .card { box-shadow: none !important; }
+          .no-print, .col-del, .btn-add-row,
+          #btn-buscar-cli, .sec-action,
+          .topbar, .sidebar, .page-header { display: none !important; }
+          .nota-doc-header {
+            background: linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%) !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .items-table thead th {
+            background: #234d38 !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .nota-footer {
+            background: #1c3a2b !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .totais-box {
+            background: #f5f0e8 !important;
+            border: 1px solid #e8dfd0 !important;
+          }
+          .sec-header {
+            background: var(--parchment, #f5f0e8) !important;
+          }
+        `;
+        clonedDoc.head.appendChild(st);
+
+        // Força inline nos SVGs para garantir renderização
+        el.querySelectorAll('img').forEach(function(img) {
+          img.crossOrigin = 'anonymous';
         });
-
-        // Remove bordas e backgrounds de todos os inputs — exibe só o valor
-        el.querySelectorAll('input, textarea, select').forEach(function(inp) {
-          inp.style.border            = 'none';
-          inp.style.background        = 'transparent';
-          inp.style.boxShadow         = 'none';
-          inp.style.outline           = 'none';
-          inp.style.padding           = '2px 0';
-          inp.style.fontFamily        = 'DM Sans, sans-serif';
-          inp.style.fontSize          = '13px';
-          inp.style.color             = '#2e3630';
-          inp.style.fontWeight        = '500';
-          inp.style.webkitAppearance  = 'none';
-          inp.style.MozAppearance     = 'none';
-        });
-
-        // Remove bordas dos table-input
-        el.querySelectorAll('.table-input').forEach(function(inp) {
-          inp.style.border     = 'none';
-          inp.style.background = 'transparent';
-          inp.style.boxShadow  = 'none';
-          inp.style.padding    = '0';
-        });
-
-        // Limpa bordas dos field-input (inclusive com erro)
-        el.querySelectorAll('.field-input').forEach(function(inp) {
-          inp.style.border     = 'none';
-          inp.style.boxShadow  = 'none';
-          inp.style.background = 'transparent';
-          inp.style.padding    = '2px 0';
-        });
-
-        // Fundo branco, sem sombra no container
-        el.style.background   = '#ffffff';
-        el.style.borderRadius = '0';
-        el.style.boxShadow    = 'none';
-
-        // Preserva cabeçalho verde da nota
-        var header = el.querySelector('.nota-doc-header');
-        if (header) {
-          header.style.background = 'linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%)';
-          header.style.webkitPrintColorAdjust = 'exact';
-          header.style.printColorAdjust = 'exact';
-        }
-
-        // Preserva header verde da tabela de itens
-        el.querySelectorAll('.items-table thead th').forEach(function(th) {
-          th.style.background = '#234d38';
-          th.style.color      = '#ffffff';
-          th.style.webkitPrintColorAdjust = 'exact';
-          th.style.printColorAdjust = 'exact';
-        });
-
-        // Preserva footer verde
-        var footer = el.querySelector('.nota-footer');
-        if (footer) {
-          footer.style.background = '#1c3a2b';
-          footer.style.webkitPrintColorAdjust = 'exact';
-          footer.style.printColorAdjust = 'exact';
-        }
-
-        // Remove sombras dos cards
-        el.querySelectorAll('.card, .nota-section').forEach(function(card) {
-          card.style.boxShadow = 'none';
-        });
-
-        // Totais box — fundo suave
-        el.querySelectorAll('.totais-box').forEach(function(b) {
-          b.style.background = '#f5f0e8';
-          b.style.border     = '1px solid #e8dfd0';
-        });
-
-        // Input de desconto
-        var discInput = el.querySelector('.disc-input');
-        if (discInput) {
-          discInput.style.border     = 'none';
-          discInput.style.background = 'transparent';
-          discInput.style.boxShadow  = 'none';
-        }
       }
     });
+
+    // Remove classe de limpeza
+    document.body.classList.remove('pdf-generating');
 
     const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     const margin  = 6;
@@ -368,21 +348,21 @@ async function exportToPDF(elementId, filename) {
     if (imgH <= pageH) {
       pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH);
     } else {
-      // Multi-página com corte correto
       var remaining = imgH;
       var srcY      = 0;
       var page      = 0;
       var ratio     = canvas.width / imgW;
-
       while (remaining > 0) {
         if (page > 0) pdf.addPage();
-        var sliceH   = Math.min(pageH, remaining);
-        var srcH_px  = sliceH * ratio;
-        var sliceCanvas       = document.createElement('canvas');
-        sliceCanvas.width     = canvas.width;
-        sliceCanvas.height    = Math.ceil(srcH_px);
+        var sliceH       = Math.min(pageH, remaining);
+        var srcH_px      = sliceH * ratio;
+        var sliceCanvas  = document.createElement('canvas');
+        sliceCanvas.width  = canvas.width;
+        sliceCanvas.height = Math.ceil(srcH_px);
         var ctx = sliceCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, srcY * ratio, canvas.width, srcH_px, 0, 0, canvas.width, srcH_px);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, Math.round(srcY * ratio), canvas.width, Math.ceil(srcH_px), 0, 0, canvas.width, Math.ceil(srcH_px));
         pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.96), 'JPEG', margin, margin, imgW, sliceH);
         srcY      += sliceH;
         remaining -= sliceH;
@@ -393,6 +373,7 @@ async function exportToPDF(elementId, filename) {
     pdf.save(filename || 'nota-pedido.pdf');
     toast('PDF gerado com sucesso!', 'ok');
   } catch (e) {
+    document.body.classList.remove('pdf-generating');
     console.error('Erro PDF:', e);
     toast('Erro ao gerar PDF. Tente usar o botão Imprimir.', 'err', 5000);
   } finally {
