@@ -185,9 +185,12 @@ function maskCpfCnpj(v) {
 
 function maskPhone(v) {
   const d = v.replace(/\D/g,'').slice(0,11);
-  if (d.length <= 10)
-    return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2');
-  return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');
+  if (d.length === 0) return '';
+  if (d.length <= 2)  return '(' + d;
+  if (d.length <= 6)  return '(' + d.slice(0,2) + ') ' + d.slice(2);
+  if (d.length <= 10) return '(' + d.slice(0,2) + ') ' + d.slice(2,6) + '-' + d.slice(6);
+  // 11 dígitos: (XX) 9 XXXX-XXXX
+  return '(' + d.slice(0,2) + ') ' + d.slice(2,3) + ' ' + d.slice(3,7) + '-' + d.slice(7);
 }
 
 function maskCnpj(v) {
