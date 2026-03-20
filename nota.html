@@ -497,9 +497,8 @@
   async function openCliModal() {
     var modal = document.getElementById('modal-cli');
     modal.classList.add('open');
-    var list = document.getElementById('modal-cli-list');
     if (!window._cachedClientes) {
-      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+      document.getElementById('modal-cli-list').innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
       window._cachedClientes = typeof dbGetClientes === 'function' ? await dbGetClientes() : getClientes();
     }
     renderCliList('');
@@ -571,7 +570,7 @@
       data:     dataEl.value,
       total:    totals.total,
       status:   'Emitida',
-      discPct:  document.getElementById('disc-pct').value || '',
+      discPct:  document.getElementById('disc-pct').value || '0',
       items:    items.map(i=>({...i})),
       empresa: {
         razao: document.getElementById('emp-razao').value,
@@ -592,10 +591,11 @@
     };
 
     // Salva (edição ou novo)
-    let nota;
-    if (window._editingNotaId) {
-      const notas = getNotas();
-      const idx = notas.findIndex(function(n){ return n.id === window._editingNotaId; });
+    var nota;
+    var notas = getNotas();
+    var editingId = window._editingNotaId || null;
+    if (editingId) {
+      var idx = notas.findIndex(function(n){ return n.id === editingId; });
       if (idx >= 0) {
         nota = Object.assign({}, notas[idx], notaData, {updatedAt: Date.now()});
         notas[idx] = nota;
@@ -603,19 +603,23 @@
         nota = Object.assign({id: uid(), createdAt: Date.now()}, notaData);
         notas.push(nota);
       }
-      saveNotas(notas);
-      if (typeof dbSaveNota === 'function') dbSaveNota(nota);
-      toast('Nota atualizada!', 'ok', 3000);
     } else {
       nota = Object.assign({id: uid(), createdAt: Date.now()}, notaData);
-      const notas = getNotas();
       notas.push(nota);
-      saveNotas(notas);
-      if (typeof dbSaveNota === 'function') dbSaveNota(nota);
     }
+    saveNotas(notas);
+    if (typeof dbSaveNota === 'function') dbSaveNota(nota);
 
-    // Gera PDF em nova janela
-    gerarPDFNota(nota);
+    // Gera PDF direto (download sem nova aba)
+    var btn = this;
+    btn.disabled = true;
+    btn.querySelector('#btn-salvar-label').textContent = 'Gerando PDF...';
+    try {
+      await gerarPDFNota(nota);
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('#btn-salvar-label').textContent = editingId ? 'Salvar alterações' : 'Salvar e PDF';
+    }
   });
 
   // ── Imprimir ──
@@ -642,9 +646,18 @@
     toast('Formulário limpo.','info',2000);
   });
 
-  // ── Modo edição via ?edit=ID ──
-  var _editId = new URLSearchParams(window.location.search).get('edit');
+  // Ctrl+Enter adiciona item
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
+  });
+
+  // ── Pré-carrega produtos/clientes para autocomplete ──
   window._editingNotaId = null;
+  if (typeof dbGetProdutos === 'function') dbGetProdutos().then(function(p){ window._cachedProdutos = p; });
+  if (typeof dbGetClientes === 'function') dbGetClientes().then(function(cl){ window._cachedClientes = cl; });
+
+  // ── Modo edição via URL ?edit=ID ──
+  var _editId = new URLSearchParams(window.location.search).get('edit');
   if (_editId) {
     var _notaEdit = getNotas().find(function(n){ return n.id === _editId; });
     if (_notaEdit) {
@@ -653,46 +666,30 @@
       document.getElementById('page-sub').textContent = 'Edite os dados e salve as alterações.';
       document.getElementById('btn-salvar-label').textContent = 'Salvar alterações';
       document.title = 'Editar Nota — Junior Substratos';
-      // Aplica dados após funções estarem prontas
-      window._notaEditPendente = _notaEdit;
+      var _ne = _notaEdit;
+      var _emp = _ne.empresa || {};
+      var _cli = _ne.clienteData || {};
+      document.getElementById('num-pedido').value  = _ne.num || '';
+      dataEl.value                                 = _ne.data || todayISO();
+      document.getElementById('responsavel').value = _ne.resp || '';
+      document.getElementById('emp-razao').value   = _emp.razao || 'Junior Substratos';
+      document.getElementById('emp-cnpj').value    = maskCnpj(_emp.cnpj || '');
+      document.getElementById('emp-end').value     = _emp.end || '';
+      document.getElementById('emp-tel').value     = maskPhone(_emp.tel || '');
+      document.getElementById('emp-email').value   = _emp.email || '';
+      document.getElementById('cli-nome').value    = _cli.nome || _ne.cliente || '';
+      document.getElementById('cli-cpfcnpj').value = maskCpfCnpj(_cli.cpfcnpj || '');
+      document.getElementById('cli-end').value     = _cli.endereco || '';
+      document.getElementById('cli-tel').value     = maskPhone(_cli.tel || '');
+      document.getElementById('cli-email').value   = _cli.email || '';
+      document.getElementById('obs').value         = _ne.obs || '';
+      if (_ne.discPct) document.getElementById('disc-pct').value = _ne.discPct;
+      items = (_ne.items || []).map(function(i){ return Object.assign({},i); });
+      itemIdCnt = items.length + 1;
+      renderItems();
+      recalc();
+      syncMeta();
     }
-  }
-
-  // ── Pré-carrega produtos e clientes para autocomplete/busca ──
-  if (typeof dbGetProdutos === 'function') dbGetProdutos().then(function(p){ window._cachedProdutos = p; });
-  if (typeof dbGetClientes === 'function') dbGetClientes().then(function(c){ window._cachedClientes = c; });
-
-  // Ctrl+Enter adiciona item
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
-  });
-
-  // Aplica edição após funções definidas
-  if (window._notaEditPendente) {
-    var _ne = window._notaEditPendente;
-    var _emp = _ne.empresa || {};
-    var _cli = _ne.clienteData || {};
-    document.getElementById('num-pedido').value  = _ne.num || '';
-    dataEl.value                                 = _ne.data || todayISO();
-    document.getElementById('responsavel').value = _ne.resp || '';
-    document.getElementById('emp-razao').value   = _emp.razao || 'Junior Substratos';
-    document.getElementById('emp-cnpj').value    = maskCnpj(_emp.cnpj || '');
-    document.getElementById('emp-end').value     = _emp.end || '';
-    document.getElementById('emp-tel').value     = maskPhone(_emp.tel || '');
-    document.getElementById('emp-email').value   = _emp.email || '';
-    document.getElementById('cli-nome').value    = _cli.nome || _ne.cliente || '';
-    document.getElementById('cli-cpfcnpj').value = maskCpfCnpj(_cli.cpfcnpj || '');
-    document.getElementById('cli-end').value     = _cli.endereco || '';
-    document.getElementById('cli-tel').value     = maskPhone(_cli.tel || '');
-    document.getElementById('cli-email').value   = _cli.email || '';
-    document.getElementById('obs').value         = _ne.obs || '';
-    if (_ne.discPct) document.getElementById('disc-pct').value = _ne.discPct;
-    items = (_ne.items || []).map(function(i){ return Object.assign({},i); });
-    itemIdCnt = items.length + 1;
-    renderItems();
-    recalc();
-    syncMeta();
-    delete window._notaEditPendente;
   }
 })();
 </script>
@@ -723,176 +720,195 @@
   })();
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-// ── Gerador de PDF isolado ──
 async function gerarPDFNota(nota) {
   var emp = nota.empresa || {};
   var cli = nota.clienteData || {};
   var dataRaw = nota.data || '';
   var dataFmt = dataRaw;
-  if (dataRaw && dataRaw.indexOf('-') > -1) {
-    var parts = dataRaw.split('-');
-    dataFmt = parts[2] + '/' + parts[1] + '/' + parts[0];
+  if (dataRaw.indexOf('-') > -1) {
+    var p = dataRaw.split('-');
+    dataFmt = p[2] + '/' + p[1] + '/' + p[0];
   }
+  var fmtR = function(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
 
-  var pdfRows = '';
+  // Calcula totais
   var itens = nota.items || [];
-  if (itens.length === 0) {
-    pdfRows = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
-  } else {
-    for (var i = 0; i < itens.length; i++) {
-      var it = itens[i];
-      var tot = Number(it.total || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
-      var uni = Number(it.unit || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
-      pdfRows += '<tr>';
-      pdfRows += '<td style="text-align:center;color:#666;width:36px;padding:7px 8px">' + (i+1) + '</td>';
-      pdfRows += '<td style="padding:7px 8px">' + (it.desc || '') + '</td>';
-      pdfRows += '<td style="text-align:right;width:55px;padding:7px 8px">' + (it.qty || 1) + '</td>';
-      pdfRows += '<td style="text-align:right;width:95px;padding:7px 8px">' + uni + '</td>';
-      pdfRows += '<td style="text-align:right;width:95px;font-weight:600;padding:7px 8px">' + tot + '</td>';
-      pdfRows += '</tr>';
-    }
-  }
-
-  var sub = Number(0), disc = Number(0);
-  for (var j = 0; j < itens.length; j++) sub += (itens[j].total || 0);
-  var pct = parseFloat(nota.discPct || 0);
-  disc = sub * (Math.min(100, Math.max(0, pct)) / 100);
+  var sub = itens.reduce(function(a,i){ return a+(i.total||0); }, 0);
+  var pct = parseFloat(nota.discPct||0);
+  var disc = sub * (Math.min(100,Math.max(0,pct))/100);
   var total = sub - disc;
-  var fmtBRLpdf = function(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
 
+  // Busca logo SVG
   var logoSvg = '';
   try {
     var r = await fetch('juniorsubstratos.svg');
-    var svgRaw = await r.text();
-    logoSvg = svgRaw
-      .replace(/fill="#235d47"/g, 'fill="#ffffff"')
-      .replace(/fill="#47b06b"/g, 'fill="#a8e6c0"')
-      .replace(/.cls-1\s*\{[^}]*\}/g, '.cls-1{fill:#ffffff}')
-      .replace(/.cls-2\s*\{[^}]*\}/g, '.cls-2{fill:#a8e6c0}')
-      .replace(/.cls-3\s*\{[^}]*\}/g, '.cls-3{fill:#a8e6c0}');
-  } catch(e) {
-    logoSvg = '<span style="font-size:18px;font-weight:800;color:#fff">Junior Substratos</span>';
+    var raw = await r.text();
+    logoSvg = raw
+      .replace(/\.cls-1\s*\{[^}]*\}/g,'.cls-1{fill:#ffffff}')
+      .replace(/\.cls-2\s*\{[^}]*\}/g,'.cls-2{fill:#a8e6c0}')
+      .replace(/\.cls-3\s*\{[^}]*\}/g,'.cls-3{fill:#a8e6c0}')
+      .replace(/fill="#235d47"/g,'fill="#ffffff"')
+      .replace(/fill="#47b06b"/g,'fill="#a8e6c0"');
+  } catch(e) {}
+
+  // Monta linhas de itens
+  var rowsHtml = '';
+  if (itens.length === 0) {
+    rowsHtml = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
+  } else {
+    for (var i=0;i<itens.length;i++) {
+      var it=itens[i];
+      rowsHtml += '<tr style="background:'+(i%2===0?'#fff':'#fafaf8')+'">';
+      rowsHtml += '<td style="text-align:center;width:36px;padding:7px 8px;color:#666">'+(i+1)+'</td>';
+      rowsHtml += '<td style="padding:7px 8px">'+(it.desc||'')+'</td>';
+      rowsHtml += '<td style="text-align:right;width:60px;padding:7px 8px">'+(it.qty||1)+'</td>';
+      rowsHtml += '<td style="text-align:right;width:100px;padding:7px 8px">'+fmtR(it.unit)+'</td>';
+      rowsHtml += '<td style="text-align:right;width:100px;padding:7px 8px;font-weight:700">'+fmtR(it.total)+'</td>';
+      rowsHtml += '</tr>';
+    }
   }
 
-  var css = [
-    '*{box-sizing:border-box;margin:0;padding:0}',
-    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#222;background:#f0ede8}',
-    '.page{width:210mm;margin:0 auto;background:#fff;box-shadow:0 0 30px rgba(0,0,0,.15)}',
-    '.hdr{background:linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%);padding:16px 22px;display:flex;justify-content:space-between;align-items:center}',
-    '.hdr-logo{width:155px;flex-shrink:0;display:flex;align-items:center}',
-    '.hdr-logo svg{width:155px;height:auto;display:block}',
-    '.hdr-lbl{font-size:10px;letter-spacing:.12em;opacity:.65;color:#fff;margin-left:10px;text-transform:uppercase}',
-    '.hdr-right{text-align:right}',
-    '.badge{border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.1em;color:#fff;display:inline-block;margin-bottom:8px}',
-    '.meta-row{color:#fff;font-size:11px;margin-bottom:2px}',
-    '.meta-lbl{opacity:.55;margin-right:4px;font-size:9px;text-transform:uppercase;letter-spacing:.06em}',
-    '.meta-val{font-weight:700}',
-    '.sec{border-bottom:1px solid #e5e5e0}',
-    '.sec-hdr{background:#f5f4f0;padding:8px 20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#235d47;border-bottom:1px solid #e5e5e0}',
-    '.sec-body{padding:14px 20px}',
-    '.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}',
-    '.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:3px}',
-    '.fv{font-size:12px;color:#222;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafaf8;min-height:28px;word-break:break-word}',
-    '.cols2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e0}',
-    '.cl{border-right:1px solid #e5e5e0}',
-    'table{width:100%;border-collapse:collapse}',
-    'th{background:#235d47;color:#fff;padding:8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}',
-    'td{border-bottom:1px solid #f0ede8;font-size:12px;vertical-align:middle}',
-    'tr:last-child td{border-bottom:none}',
-    '.tot-wrap{display:flex;gap:20px;padding:14px 20px;align-items:flex-start}',
-    '.obs-wrap{flex:1}',
-    '.obs-box{border:1px solid #ddd;border-radius:4px;padding:10px;min-height:64px;font-size:11px;color:#444;white-space:pre-wrap;background:#fafaf8}',
-    '.tot-tbl{min-width:210px;background:#f5f4f0;border:1px solid #e5e5e0;border-radius:6px;padding:12px}',
-    '.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#555}',
-    '.tf{font-size:16px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:8px;padding-top:8px}',
-    '.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:28px 44px}',
-    '.sig-line{border-bottom:1.5px solid #333;height:40px;margin-bottom:7px}',
-    '.sig-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;text-align:center;color:#555}',
-    '.sig-sub{font-size:11px;text-align:center;color:#888;margin-top:3px}',
-    '.ftr{background:linear-gradient(135deg,#1a4535,#235d47);color:rgba(255,255,255,.6);font-size:9px;padding:8px 22px;display:flex;justify-content:space-between}',
-    '@media print{@page{margin:0;size:A4}body{background:#fff}.page{box-shadow:none;width:100%}}'
-  ].join('');
+  var fv = function(v){ return v||'\u2014'; };
 
-  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>';
-  html += '<title>' + nota.num + ' - Junior Substratos</title>';
-  html += '<style>' + css + '</style></head><body>';
-  html += '<div class="page">';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0}'
+    + 'body{font-family:Arial,sans-serif;font-size:12px;color:#222}'
+    + '.page{width:794px;margin:0 auto;background:#fff}'
+    + '.hdr{background:linear-gradient(135deg,#1a4535,#235d47,#2e7a5f);padding:16px 22px;display:flex;justify-content:space-between;align-items:center}'
+    + '.logo-wrap{width:150px;flex-shrink:0}'
+    + '.logo-wrap svg{width:150px;height:auto}'
+    + '.hdr-lbl{font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.65);margin-left:10px;text-transform:uppercase}'
+    + '.hdr-right{text-align:right}'
+    + '.badge{border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.1em;color:#fff;display:inline-block;margin-bottom:8px}'
+    + '.mr{color:#fff;font-size:11px;margin-bottom:2px}'
+    + '.ml{opacity:.55;font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}'
+    + '.mv{font-weight:700}'
+    + '.sec{border-bottom:1px solid #e5e5e0}'
+    + '.sh{background:#f5f4f0;padding:8px 20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#235d47;border-bottom:1px solid #e5e5e0}'
+    + '.sb{padding:14px 20px}'
+    + '.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}'
+    + '.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:3px}'
+    + '.fv{font-size:12px;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafaf8;min-height:26px;word-break:break-word}'
+    + '.c2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e0}'
+    + '.cl{border-right:1px solid #e5e5e0}'
+    + 'table{width:100%;border-collapse:collapse}'
+    + 'th{background:#235d47;color:#fff;padding:8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}'
+    + 'td{font-size:12px;border-bottom:1px solid #f0ede8;vertical-align:middle}'
+    + '.tw{display:flex;gap:20px;padding:14px 20px}'
+    + '.ow{flex:1}'
+    + '.ob{border:1px solid #ddd;border-radius:4px;padding:10px;min-height:60px;font-size:11px;color:#444;white-space:pre-wrap;background:#fafaf8}'
+    + '.tt{min-width:210px;background:#f5f4f0;border:1px solid #e5e5e0;border-radius:6px;padding:12px}'
+    + '.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#555}'
+    + '.tf{font-size:16px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:8px;padding-top:8px}'
+    + '.sg{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:28px 44px}'
+    + '.sl{border-bottom:1.5px solid #333;height:40px;margin-bottom:7px}'
+    + '.slb{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;text-align:center;color:#555}'
+    + '.ss{font-size:11px;text-align:center;color:#888;margin-top:3px}'
+    + '.ft{background:linear-gradient(135deg,#1a4535,#235d47);color:rgba(255,255,255,.6);font-size:9px;padding:8px 22px;display:flex;justify-content:space-between}'
+    + '@media print{@page{size:A4;margin:8mm}body,html{margin:0;padding:0}.page{width:100%}}'
+    + '</style></head><body><div class="page">'
 
-  // Header
-  html += '<div class="hdr">';
-  html += '<div style="display:flex;align-items:center"><div class="hdr-logo">' + logoSvg + '</div>';
-  html += '<span class="hdr-lbl">Nota de Pedido</span></div>';
-  html += '<div class="hdr-right">';
-  html += '<div class="badge">NOTA DE PEDIDO</div>';
-  html += '<div class="meta-row"><span class="meta-lbl">Nº Pedido</span><span class="meta-val">' + (nota.num||'') + '</span></div>';
-  html += '<div class="meta-row"><span class="meta-lbl">Data</span><span class="meta-val">' + dataFmt + '</span></div>';
-  html += '<div class="meta-row"><span class="meta-lbl">Vendedor(a)</span><span class="meta-val">' + (nota.resp||'—') + '</span></div>';
-  html += '</div></div>';
+    // Header
+    + '<div class="hdr"><div style="display:flex;align-items:center">'
+    + '<div class="logo-wrap">'+logoSvg+'</div>'
+    + '<span class="hdr-lbl">Nota de Pedido</span></div>'
+    + '<div class="hdr-right"><div class="badge">NOTA DE PEDIDO</div>'
+    + '<div class="mr"><span class="ml">N\u00ba Pedido</span><span class="mv">'+fv(nota.num)+'</span></div>'
+    + '<div class="mr"><span class="ml">Data</span><span class="mv">'+dataFmt+'</span></div>'
+    + '<div class="mr"><span class="ml">Vendedor(a)</span><span class="mv">'+fv(nota.resp)+'</span></div>'
+    + '</div></div>'
 
-  // Informacoes
-  html += '<div class="sec"><div class="sec-hdr">Informações do Pedido</div><div class="sec-body">';
-  html += '<div class="g2" style="margin-bottom:12px">';
-  html += '<div><div class="fl">Número do Pedido</div><div class="fv">' + (nota.num||'') + '</div></div>';
-  html += '<div><div class="fl">Data</div><div class="fv">' + dataFmt + '</div></div></div>';
-  html += '<div><div class="fl">Vendedor(a)</div><div class="fv">' + (nota.resp||'—') + '</div></div>';
-  html += '</div></div>';
+    // Informacoes
+    + '<div class="sec"><div class="sh">Informa\u00e7\u00f5es do Pedido</div><div class="sb">'
+    + '<div class="g2" style="margin-bottom:12px">'
+    + '<div><div class="fl">N\u00famero do Pedido</div><div class="fv">'+fv(nota.num)+'</div></div>'
+    + '<div><div class="fl">Data</div><div class="fv">'+dataFmt+'</div></div></div>'
+    + '<div><div class="fl">Vendedor(a)</div><div class="fv">'+fv(nota.resp)+'</div></div>'
+    + '</div></div>'
 
-  // Empresa + Cliente
-  html += '<div class="cols2">';
-  html += '<div class="cl"><div class="sec-hdr">Dados da Empresa</div><div class="sec-body">';
-  html += '<div style="margin-bottom:10px"><div class="fl">Razão Social</div><div class="fv">' + (emp.razao||'—') + '</div></div>';
-  html += '<div style="margin-bottom:10px"><div class="fl">CNPJ</div><div class="fv">' + (emp.cnpj||'—') + '</div></div>';
-  html += '<div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">' + (emp.end||'—') + '</div></div>';
-  html += '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">' + (emp.tel||'—') + '</div></div>';
-  html += '<div><div class="fl">E-mail</div><div class="fv">' + (emp.email||'—') + '</div></div></div>';
-  html += '</div></div>';
-  html += '<div><div class="sec-hdr">Dados do Cliente</div><div class="sec-body">';
-  html += '<div style="margin-bottom:10px"><div class="fl">Nome / Razão Social</div><div class="fv">' + (cli.nome||nota.cliente||'—') + '</div></div>';
-  html += '<div style="margin-bottom:10px"><div class="fl">CPF / CNPJ</div><div class="fv">' + (cli.cpfcnpj||'—') + '</div></div>';
-  html += '<div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">' + (cli.endereco||'—') + '</div></div>';
-  html += '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">' + (cli.tel||'—') + '</div></div>';
-  html += '<div><div class="fl">E-mail</div><div class="fv">' + (cli.email||'—') + '</div></div></div>';
-  html += '</div></div></div>';
+    // Empresa + Cliente
+    + '<div class="c2"><div class="cl"><div class="sh">Dados da Empresa</div><div class="sb">'
+    + '<div style="margin-bottom:10px"><div class="fl">Raz\u00e3o Social</div><div class="fv">'+fv(emp.razao)+'</div></div>'
+    + '<div style="margin-bottom:10px"><div class="fl">CNPJ</div><div class="fv">'+fv(emp.cnpj)+'</div></div>'
+    + '<div style="margin-bottom:10px"><div class="fl">Endere\u00e7o</div><div class="fv">'+fv(emp.end)+'</div></div>'
+    + '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">'+fv(emp.tel)+'</div></div>'
+    + '<div><div class="fl">E-mail</div><div class="fv">'+fv(emp.email)+'</div></div></div>'
+    + '</div></div>'
+    + '<div><div class="sh">Dados do Cliente</div><div class="sb">'
+    + '<div style="margin-bottom:10px"><div class="fl">Nome / Raz\u00e3o Social</div><div class="fv">'+fv(cli.nome||nota.cliente)+'</div></div>'
+    + '<div style="margin-bottom:10px"><div class="fl">CPF / CNPJ</div><div class="fv">'+fv(cli.cpfcnpj)+'</div></div>'
+    + '<div style="margin-bottom:10px"><div class="fl">Endere\u00e7o</div><div class="fv">'+fv(cli.endereco)+'</div></div>'
+    + '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">'+fv(cli.tel)+'</div></div>'
+    + '<div><div class="fl">E-mail</div><div class="fv">'+fv(cli.email)+'</div></div></div>'
+    + '</div></div></div>'
 
-  // Itens
-  html += '<div class="sec"><div class="sec-hdr">Itens do Pedido</div>';
-  html += '<table><thead><tr>';
-  html += '<th style="text-align:center;width:36px">#</th>';
-  html += '<th style="text-align:left">Descrição do Item</th>';
-  html += '<th style="text-align:right;width:55px">Qtd</th>';
-  html += '<th style="text-align:right;width:95px">Valor Unit.</th>';
-  html += '<th style="text-align:right;width:95px">Total</th>';
-  html += '</tr></thead><tbody>' + pdfRows + '</tbody></table></div>';
+    // Itens
+    + '<div class="sec"><div class="sh">Itens do Pedido</div>'
+    + '<table><thead><tr>'
+    + '<th style="text-align:center;width:36px">#</th>'
+    + '<th style="text-align:left">Descri\u00e7\u00e3o</th>'
+    + '<th style="text-align:right;width:60px">Qtd</th>'
+    + '<th style="text-align:right;width:100px">Valor Unit.</th>'
+    + '<th style="text-align:right;width:100px">Total</th>'
+    + '</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'
 
-  // Totais + Obs
-  html += '<div class="sec"><div class="tot-wrap">';
-  html += '<div class="obs-wrap"><div class="fl" style="margin-bottom:6px">Observações</div>';
-  html += '<div class="obs-box">' + (nota.obs||'') + '</div></div>';
-  html += '<div class="tot-tbl">';
-  html += '<div class="tr"><span>Subtotal</span><span>' + fmtBRLpdf(sub) + '</span></div>';
-  html += '<div class="tr"><span>Desconto (' + (nota.discPct||0) + '%)</span><span>- ' + fmtBRLpdf(disc) + '</span></div>';
-  html += '<div class="tr tf"><span>TOTAL FINAL</span><span>' + fmtBRLpdf(total) + '</span></div>';
-  html += '</div></div></div>';
+    // Totais + Obs
+    + '<div class="sec"><div class="tw"><div class="ow">'
+    + '<div class="fl" style="margin-bottom:6px">Observa\u00e7\u00f5es</div>'
+    + '<div class="ob">'+(nota.obs||'')+'</div></div>'
+    + '<div class="tt">'
+    + '<div class="tr"><span>Subtotal</span><span>'+fmtR(sub)+'</span></div>'
+    + '<div class="tr"><span>Desconto ('+(nota.discPct||0)+'%)</span><span>- '+fmtR(disc)+'</span></div>'
+    + '<div class="tr tf"><span>TOTAL FINAL</span><span>'+fmtR(total)+'</span></div>'
+    + '</div></div></div>'
 
-  // Assinaturas
-  html += '<div class="sec"><div class="sec-hdr">Assinaturas</div><div class="sig-grid">';
-  html += '<div><div class="sig-line"></div><div class="sig-lbl">Vendedor(a)</div><div class="sig-sub">' + (nota.resp||'—') + '</div></div>';
-  html += '<div><div class="sig-line"></div><div class="sig-lbl">Assinatura do Cliente</div><div class="sig-sub">' + (cli.nome||nota.cliente||'') + '</div></div>';
-  html += '</div></div>';
+    // Assinaturas
+    + '<div class="sec"><div class="sh">Assinaturas</div><div class="sg">'
+    + '<div><div class="sl"></div><div class="slb">Vendedor(a)</div><div class="ss">'+fv(nota.resp)+'</div></div>'
+    + '<div><div class="sl"></div><div class="slb">Assinatura do Cliente</div><div class="ss">'+(cli.nome||nota.cliente||'')+'</div></div>'
+    + '</div></div>'
 
-  // Footer
-  html += '<div class="ftr">';
-  html += '<span>Junior Substratos · Emitido em ' + dataFmt + '</span>';
-  html += '<span>Documento de uso interno. Não possui valor fiscal.</span>';
-  html += '</div></div>';
-  html += '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>';
-  html += '</body></html>';
+    // Footer
+    + '<div class="ft"><span>Junior Substratos \u00b7 Emitido em '+dataFmt+'</span>'
+    + '<span>Documento de uso interno. N\u00e3o possui valor fiscal.</span></div>'
+    + '</div></body></html>';
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-  if (typeof toast === 'function') toast('Nota gerada! Salve como PDF na janela que abriu.', 'ok', 5000);
+  // Usa jsPDF com html() para renderizar direto — download sem nova aba
+  try {
+    var doc = new window.jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    var container = document.createElement('div');
+    container.style.cssText = 'position:fixed;top:-9999px;left:0;width:794px;background:#fff;z-index:-1';
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    await new Promise(function(res){ setTimeout(res, 300); });
+    await doc.html(container, {
+      callback: function(doc) {
+        var fname = (nota.num||'nota').replace(/[^a-zA-Z0-9-_]/g,'') + '_' + (nota.cliente||'cliente').replace(/\s+/g,'-').slice(0,20) + '.pdf';
+        doc.save(fname);
+        document.body.removeChild(container);
+        if (typeof toast === 'function') toast('PDF baixado com sucesso!', 'ok', 4000);
+      },
+      x: 0, y: 0,
+      width: 210,
+      windowWidth: 794,
+      autoPaging: 'text',
+      margin: [0,0,0,0]
+    });
+  } catch(e) {
+    document.body.removeChild(container);
+    console.error('PDF error:', e);
+    // Fallback: download como HTML
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (nota.num||'nota').replace(/[^a-zA-Z0-9-_]/g,'') + '.html';
+    a.click();
+    if (typeof toast === 'function') toast('Nota baixada como HTML (PDF indispon\u00edvel).', 'info', 5000);
+  }
 }
 </script>
 </body>
