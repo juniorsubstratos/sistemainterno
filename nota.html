@@ -131,7 +131,7 @@
               <div class="nota-2col">
                 <div class="field">
                   <label class="field-label" for="emp-tel">Telefone</label>
-                  <input class="field-input" type="text" id="emp-tel" placeholder="(00) 9 0000-0000" maxlength="15" />
+                  <input class="field-input" type="text" id="emp-tel" placeholder="(00) 00000-0000" maxlength="15" />
                 </div>
                 <div class="field">
                   <label class="field-label" for="emp-email">E-mail</label>
@@ -169,7 +169,7 @@
               <div class="nota-2col">
                 <div class="field">
                   <label class="field-label" for="cli-tel">Telefone</label>
-                  <input class="field-input" type="text" id="cli-tel" placeholder="(00) 9 0000-0000" maxlength="15" />
+                  <input class="field-input" type="text" id="cli-tel" placeholder="(00) 00000-0000" maxlength="15" />
                 </div>
                 <div class="field">
                   <label class="field-label" for="cli-email">E-mail</label>
@@ -311,7 +311,6 @@
   // ── Estado dos itens ──
   let items = [];
   let itemIdCnt = 1;
-  let editingId = null; // ID da nota sendo editada (se vier do histórico)
 
   // ── Data automática ──
   const dataEl = document.getElementById('data-pedido');
@@ -322,21 +321,6 @@
   const yr = new Date().getFullYear();
   const seq = String(Math.floor(Math.random()*900+100));
   document.getElementById('num-pedido').value = `PED-${yr}-${seq}`;
-
-  // ── Modo edição: carrega nota pelo ?edit=ID (aplicado após funções estarem prontas) ──
-  const editId = new URLSearchParams(window.location.search).get('edit');
-  if (editId) {
-    const notaEdit = getNotas().find(n => n.id === editId);
-    if (notaEdit) {
-      editingId = editId;
-      document.getElementById('page-heading').textContent = 'Editar Nota de Pedido';
-      document.getElementById('page-sub').textContent = 'Edite os dados da nota e salve as alterações.';
-      document.getElementById('btn-salvar-label').textContent = 'Salvar alterações';
-      document.title = 'Editar Nota — Junior Substratos';
-      // Guarda para aplicar depois que renderItems estiver definido
-      window._notaEditPendente = notaEdit;
-    }
-  }
 
   // ── Sync displays ──
   function syncMeta() {
@@ -351,9 +335,6 @@
     document.getElementById(id).addEventListener('input', syncMeta)
   );
   syncMeta();
-
-  // ── Pré-carrega produtos para autocomplete ──
-  dbGetProdutos().then(p => { window._cachedProdutos = p; });
 
   // ── Máscaras ──
   document.getElementById('emp-cnpj').addEventListener('input', function(){ this.value = maskCnpj(this.value); });
@@ -509,52 +490,25 @@
   document.getElementById('disc-pct').addEventListener('input', recalc);
   renderItems();
 
-  // ── Aplica dados de edição (após funções definidas) ──
-  if (window._notaEditPendente) {
-    const notaEdit = window._notaEditPendente;
-    const emp = notaEdit.empresa || {};
-    const cli = notaEdit.clienteData || {};
-    document.getElementById('num-pedido').value   = notaEdit.num || '';
-    dataEl.value                                  = notaEdit.data || todayISO();
-    document.getElementById('responsavel').value  = notaEdit.resp || '';
-    document.getElementById('emp-razao').value    = emp.razao || 'Junior Substratos';
-    document.getElementById('emp-cnpj').value     = maskCnpj(emp.cnpj || '');
-    document.getElementById('emp-end').value      = emp.end   || '';
-    document.getElementById('emp-tel').value      = maskPhone(emp.tel || '');
-    document.getElementById('emp-email').value    = emp.email || '';
-    document.getElementById('cli-nome').value     = cli.nome  || notaEdit.cliente || '';
-    document.getElementById('cli-cpfcnpj').value  = maskCpfCnpj(cli.cpfcnpj || '');
-    document.getElementById('cli-end').value      = cli.endereco || '';
-    document.getElementById('cli-tel').value      = maskPhone(cli.tel || '');
-    document.getElementById('cli-email').value    = cli.email || '';
-    document.getElementById('obs').value          = notaEdit.obs || '';
-    if (notaEdit.discPct) document.getElementById('disc-pct').value = notaEdit.discPct;
-    items = (notaEdit.items || []).map(i => ({ ...i }));
-    itemIdCnt = items.length + 1;
-    renderItems();
-    recalc();
-    syncMeta();
-    delete window._notaEditPendente;
-  }
-
   // ── Buscar cliente ──
   document.getElementById('btn-buscar-cli').addEventListener('click', openCliModal);
   document.getElementById('modal-cli-close').addEventListener('click', () => document.getElementById('modal-cli').classList.remove('open'));
 
-  let _cachedClientes = null;
   async function openCliModal() {
-    const modal = document.getElementById('modal-cli');
+    var modal = document.getElementById('modal-cli');
     modal.classList.add('open');
-    const list = document.getElementById('modal-cli-list');
-    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
-    if (!_cachedClientes) _cachedClientes = await dbGetClientes();
+    var list = document.getElementById('modal-cli-list');
+    if (!window._cachedClientes) {
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+      window._cachedClientes = typeof dbGetClientes === 'function' ? await dbGetClientes() : getClientes();
+    }
     renderCliList('');
-    setTimeout(()=>document.getElementById('modal-cli-search').focus(),100);
+    setTimeout(function(){ document.getElementById('modal-cli-search').focus(); }, 100);
   }
 
   function renderCliList(q) {
     const list = document.getElementById('modal-cli-list');
-    const clientes = (_cachedClientes || getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
+    const clientes = (window._cachedClientes || getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
     if (!clientes.length) {
       list.innerHTML = `<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>`;
       return;
@@ -611,15 +565,14 @@
     syncMeta();
     document.getElementById('nota-footer-date').textContent = todayDisplay();
 
-    // Monta objeto da nota
     const notaData = {
       num:      document.getElementById('num-pedido').value,
       cliente:  document.getElementById('cli-nome').value,
       data:     dataEl.value,
       total:    totals.total,
       status:   'Emitida',
-      items:    items.map(i=>({...i})),
       discPct:  document.getElementById('disc-pct').value || '',
+      items:    items.map(i=>({...i})),
       empresa: {
         razao: document.getElementById('emp-razao').value,
         cnpj:  document.getElementById('emp-cnpj').value,
@@ -638,26 +591,31 @@
       resp: document.getElementById('responsavel').value,
     };
 
+    // Salva (edição ou novo)
     let nota;
-    if (editingId) {
-      // Modo edição: busca nota original para manter createdAt
-      const notasAtual = getNotas();
-      const original = notasAtual.find(n => n.id === editingId) || {};
-      nota = { ...original, ...notaData, id: editingId, updatedAt: Date.now() };
+    if (window._editingNotaId) {
+      const notas = getNotas();
+      const idx = notas.findIndex(function(n){ return n.id === window._editingNotaId; });
+      if (idx >= 0) {
+        nota = Object.assign({}, notas[idx], notaData, {updatedAt: Date.now()});
+        notas[idx] = nota;
+      } else {
+        nota = Object.assign({id: uid(), createdAt: Date.now()}, notaData);
+        notas.push(nota);
+      }
+      saveNotas(notas);
+      if (typeof dbSaveNota === 'function') dbSaveNota(nota);
+      toast('Nota atualizada!', 'ok', 3000);
     } else {
-      nota = { id: uid(), createdAt: Date.now(), ...notaData };
+      nota = Object.assign({id: uid(), createdAt: Date.now()}, notaData);
+      const notas = getNotas();
+      notas.push(nota);
+      saveNotas(notas);
+      if (typeof dbSaveNota === 'function') dbSaveNota(nota);
     }
-    // Salva no Firestore e no localStorage (backup)
-    dbSaveNota(nota);
-    const notas = getNotas();
-    const idx = notas.findIndex(n => n.id === nota.id);
-    if (idx >= 0) notas[idx] = nota; else notas.push(nota);
-    saveNotas(notas);
-    if (editingId) toast('Nota atualizada!', 'ok', 3000);
 
-    // Exporta PDF
-    const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
-    await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
+    // Gera PDF em nova janela
+    gerarPDFNota(nota);
   });
 
   // ── Imprimir ──
@@ -684,933 +642,58 @@
     toast('Formulário limpo.','info',2000);
   });
 
-  // Ctrl+Enter adiciona item
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
-  });
-})();
-</script>
-<script>
-</script>
-<script>
-  (function() {
-    const sidebar = document.querySelector('.sidebar');
-    const menuBtn = document.getElementById('menu-btn');
-    if (!sidebar || !menuBtn) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'sidebar-overlay';
-    document.body.appendChild(overlay);
-    menuBtn.addEventListener('click', function() {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('active');
-    });
-    overlay.addEventListener('click', function() {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('active');
-    });
-    document.querySelectorAll('.nav-item').forEach(el => {
-      el.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-      });
-    });
-  })();
-</script>
-</body>
-</html>    // ── Gera PDF via HTML limpo ──
-    const _g = id => { const el = document.getElementById(id); return el ? (el.value||'') : ''; };
-    const _t = id => { const el = document.getElementById(id); return el ? (el.textContent||'') : ''; };
-
-    const pdfRows = [];
-    document.querySelectorAll('#items-tbody tr:not(#empty-row)').forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (tds.length >= 5) pdfRows.push({
-        n: tds[0].textContent.trim(),
-        d: tds[1].querySelector('input') ? tds[1].querySelector('input').value : tds[1].textContent.trim(),
-        q: tds[2].querySelector('input') ? tds[2].querySelector('input').value : tds[2].textContent.trim(),
-        u: tds[3].querySelector('input') ? tds[3].querySelector('input').value : tds[3].textContent.trim(),
-        t: tds[4].textContent.trim()
-      });
-    });
-
-    const pdfData = {
-      num: _g('num-pedido'), dataRaw: _g('data-pedido'), resp: _g('responsavel'),
-      eRazao: _g('emp-razao'), eCnpj: _g('emp-cnpj'), eEnd: _g('emp-end'),
-      eTel: _g('emp-tel'), eEmail: _g('emp-email'),
-      cNome: _g('cli-nome'), cDoc: _g('cli-cpfcnpj'), cEnd: _g('cli-end'),
-      cTel: _g('cli-tel'), cEmail: _g('cli-email'),
-      obs: (document.getElementById('obs')||{}).value||'',
-      sub: _t('val-sub'), disc: _t('val-disc'), discPct: _g('disc-pct'), total: _t('val-total'),
-    };
-
-    let dataFmt = pdfData.dataRaw;
-    if (dataFmt && dataFmt.includes('-')) { const [y,m,d]=dataFmt.split('-'); dataFmt=d+'/'+m+'/'+y; }
-
-    const pdfRowsHtml = pdfRows.length
-      ? pdfRows.map(r=>`<tr>
-          <td style="text-align:center;color:#666;width:36px;padding:7px 8px">${r.n}</td>
-          <td style="padding:7px 8px">${r.d}</td>
-          <td style="text-align:right;width:55px;padding:7px 8px">${r.q}</td>
-          <td style="text-align:right;width:95px;padding:7px 8px">${r.u}</td>
-          <td style="text-align:right;width:95px;font-weight:600;padding:7px 8px">${r.t}</td>
-        </tr>`).join('')
-      : '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
-
-    let logoSvg = '';
-    try {
-      const r = await fetch('juniorsubstratos.svg');
-      const svgRaw = await r.text();
-      // Força cores da logo para branco/claro no fundo verde
-      logoSvg = svgRaw
-        .replace(/fill="#235d47"/g, 'fill="#ffffff"')
-        .replace(/fill="#47b06b"/g, 'fill="#a8e6c0"')
-        .replace(/class="cls-1"/g, 'style="fill:#ffffff"')
-        .replace(/class="cls-2"/g, 'style="fill:#a8e6c0"')
-        .replace(/class="cls-3"/g, 'style="fill:#a8e6c0"');
-    } catch(e){ logoSvg = '<span style="font-size:20px;font-weight:800;color:#fff">Junior Substratos</span>'; }
-
-    const pdfHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-<title>${pdfData.num} — Junior Substratos</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#222;background:#f0ede8}
-.page{width:210mm;margin:0 auto;background:#fff;box-shadow:0 0 30px rgba(0,0,0,.15)}
-/* HEADER */
-.hdr{background:linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%);padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
-.hdr-logo{width:155px;display:flex;align-items:center;flex-shrink:0}
-.hdr-logo svg{width:155px;height:auto;display:block}
-.hdr-lbl{font-size:10px;letter-spacing:.12em;opacity:.65;color:#fff;margin-left:10px;text-transform:uppercase;align-self:flex-end;padding-bottom:2px}
-.hdr-right{text-align:right}
-.badge{border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.1em;color:#fff;display:inline-block;margin-bottom:8px}
-.meta-row{color:#fff;font-size:11px;margin-bottom:2px}
-.meta-lbl{opacity:.55;margin-right:4px;font-size:9px;text-transform:uppercase;letter-spacing:.06em}
-.meta-val{font-weight:700}
-/* SECTIONS */
-.sec{border-bottom:1px solid #e5e5e0}
-.sec-hdr{background:#f5f4f0;padding:8px 20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#235d47;border-bottom:1px solid #e5e5e0;display:flex;align-items:center;gap:6px}
-.sec-body{padding:14px 20px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:3px}
-.fv{font-size:12px;color:#222;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafaf8;min-height:28px;word-break:break-word;line-height:1.5}
-/* 2 COLS */
-.cols2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e0}
-.cl{border-right:1px solid #e5e5e0}
-/* TABLE */
-table{width:100%;border-collapse:collapse}
-th{background:#235d47;color:#fff;padding:8px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-td{border-bottom:1px solid #f0ede8;font-size:12px;vertical-align:middle}
-tr:last-child td{border-bottom:none}
-/* TOTAIS */
-.tot-wrap{display:flex;gap:20px;padding:14px 20px;align-items:flex-start}
-.obs-wrap{flex:1}
-.obs-box{border:1px solid #ddd;border-radius:4px;padding:10px;min-height:64px;font-size:11px;color:#444;white-space:pre-wrap;background:#fafaf8}
-.tot-tbl{min-width:210px;background:#f5f4f0;border:1px solid #e5e5e0;border-radius:6px;padding:12px}
-.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#555}
-.tf{font-size:16px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:8px;padding-top:8px}
-/* ASSINATURAS */
-.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:28px 44px}
-.sig-line{border-bottom:1.5px solid #333;height:40px;margin-bottom:7px}
-.sig-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;text-align:center;color:#555}
-.sig-sub{font-size:11px;text-align:center;color:#888;margin-top:3px}
-/* FOOTER */
-.ftr{background:linear-gradient(135deg,#1a4535,#235d47);color:rgba(255,255,255,.6);font-size:9px;padding:8px 22px;display:flex;justify-content:space-between}
-@media print{@page{margin:0;size:A4}body{background:#fff}.page{box-shadow:none;width:100%}}
-</style></head><body>
-<div class="page">
-
-<div class="hdr">
-  <div style="display:flex;align-items:center">
-    <div class="hdr-logo">${logoSvg}</div>
-    <span class="hdr-lbl">Nota de Pedido</span>
-  </div>
-  <div class="hdr-right">
-    <div class="badge">NOTA DE PEDIDO</div>
-    <div class="meta-row"><span class="meta-lbl">Nº Pedido</span><span class="meta-val">${pdfData.num}</span></div>
-    <div class="meta-row"><span class="meta-lbl">Data</span><span class="meta-val">${dataFmt}</span></div>
-    <div class="meta-row"><span class="meta-lbl">Vendedor(a)</span><span class="meta-val">${pdfData.resp||'—'}</span></div>
-  </div>
-</div>
-
-<div class="sec">
-  <div class="sec-hdr">Informações do Pedido</div>
-  <div class="sec-body">
-    <div class="g2" style="margin-bottom:12px">
-      <div><div class="fl">Número do Pedido</div><div class="fv">${pdfData.num}</div></div>
-      <div><div class="fl">Data</div><div class="fv">${dataFmt}</div></div>
-    </div>
-    <div><div class="fl">Vendedor(a)</div><div class="fv">${pdfData.resp||'—'}</div></div>
-  </div>
-</div>
-
-<div class="cols2">
-  <div class="cl">
-    <div class="sec-hdr">Dados da Empresa</div>
-    <div class="sec-body">
-      <div style="margin-bottom:10px"><div class="fl">Razão Social</div><div class="fv">${pdfData.eRazao||'—'}</div></div>
-      <div style="margin-bottom:10px"><div class="fl">CNPJ</div><div class="fv">${pdfData.eCnpj||'—'}</div></div>
-      <div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">${pdfData.eEnd||'—'}</div></div>
-      <div class="g2">
-        <div><div class="fl">Telefone</div><div class="fv">${pdfData.eTel||'—'}</div></div>
-        <div><div class="fl">E-mail</div><div class="fv">${pdfData.eEmail||'—'}</div></div>
-      </div>
-    </div>
-  </div>
-  <div>
-    <div class="sec-hdr">Dados do Cliente</div>
-    <div class="sec-body">
-      <div style="margin-bottom:10px"><div class="fl">Nome / Razão Social</div><div class="fv">${pdfData.cNome||'—'}</div></div>
-      <div style="margin-bottom:10px"><div class="fl">CPF / CNPJ</div><div class="fv">${pdfData.cDoc||'—'}</div></div>
-      <div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">${pdfData.cEnd||'—'}</div></div>
-      <div class="g2">
-        <div><div class="fl">Telefone</div><div class="fv">${pdfData.cTel||'—'}</div></div>
-        <div><div class="fl">E-mail</div><div class="fv">${pdfData.cEmail||'—'}</div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="sec">
-  <div class="sec-hdr">Itens do Pedido</div>
-  <table>
-    <thead><tr>
-      <th style="text-align:center;width:36px">#</th>
-      <th style="text-align:left">Descrição do Item</th>
-      <th style="text-align:right;width:55px">Qtd</th>
-      <th style="text-align:right;width:95px">Valor Unit.</th>
-      <th style="text-align:right;width:95px">Total</th>
-    </tr></thead>
-    <tbody>${pdfRowsHtml}</tbody>
-  </table>
-</div>
-
-<div class="sec">
-  <div class="tot-wrap">
-    <div class="obs-wrap">
-      <div class="fl" style="margin-bottom:6px">Observações</div>
-      <div class="obs-box">${pdfData.obs||''}</div>
-    </div>
-    <div class="tot-tbl">
-      <div class="tr"><span>Subtotal</span><span>${pdfData.sub}</span></div>
-      <div class="tr"><span>Desconto (${pdfData.discPct||0}%)</span><span>${pdfData.disc}</span></div>
-      <div class="tr tf"><span>TOTAL FINAL</span><span>${pdfData.total}</span></div>
-    </div>
-  </div>
-</div>
-
-<div class="sec">
-  <div class="sec-hdr">Assinaturas</div>
-  <div class="sig-grid">
-    <div>
-      <div class="sig-line"></div>
-      <div class="sig-lbl">Vendedor(a)</div>
-      <div class="sig-sub">${pdfData.resp||'—'}</div>
-    </div>
-    <div>
-      <div class="sig-line"></div>
-      <div class="sig-lbl">Assinatura do Cliente</div>
-      <div class="sig-sub">${pdfData.cNome||''}</div>
-    </div>
-  </div>
-</div>
-
-<div class="ftr">
-  <span>Junior Substratos · Emitido em ${dataFmt}</span>
-  <span>Documento de uso interno. Não possui valor fiscal.</span>
-</div>
-
-</div>
-<script>window.onload=function(){setTimeout(function(){window.print();},500);}</script>
-</body></html>`;
-
-    const blob = new Blob([pdfHtml], {type:'text/html;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    toast('Nota gerada! Salve como PDF na janela que abriu.', 'ok', 5000);meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerar Nota de Pedido — Junior Substratos</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-</head>
-<body>
-<script src="utils.js"></script>
-<script src="sidebar.js"></script>
-<script>requireAuth(); renderSidebar('nota.html');</script>
-
-<div class="admin-layout">
-  <div class="admin-content">
-
-    <header class="topbar">
-      <button id="menu-btn" class="topbar-menu-btn" aria-label="Menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-      </button>
-      <span class="topbar-title">Junior Substratos</span>
-      <div class="topbar-right">
-        <span class="topbar-clock" id="clock">00:00:00</span>
-        <div class="topbar-user">
-          <div class="topbar-avatar" id="topbar-avatar">U</div>
-          <span id="topbar-user-name">Usuário</span>
-        </div>
-      </div>
-    </header>
-
-    <main class="page-content">
-      <div class="page-header no-print">
-        <div>
-          <h1 class="page-heading" id="page-heading">Gerar Nota de Pedido</h1>
-          <p class="page-sub" id="page-sub">Preencha os dados e gere a nota. Os campos com * são obrigatórios.</p>
-        </div>
-        <div class="page-actions">
-          <button class="btn btn-ghost" id="btn-clear">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
-            Limpar
-          </button>
-          <button class="btn btn-secondary" id="btn-print">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h8v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h12a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h8v6H6v-6z"/></svg>
-            Imprimir
-          </button>
-          <button class="btn btn-primary" id="btn-salvar">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-6H7v6M7 3H3v18h14V7l-4-4z"/><path d="M11 3v4h4"/></svg>
-            <span id="btn-salvar-label">Salvar e PDF</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- DOCUMENTO DA NOTA -->
-      <div id="nota-doc" class="card">
-
-        <!-- Cabeçalho da nota -->
-        <div class="nota-doc-header">
-          <div class="nota-empresa">
-            <img src="juniorsubstratos.svg" alt="Junior Substratos" class="logo-white logo-nota" />
-            <div>
-              <div class="nota-empresa-sub">Nota de Pedido</div>
-            </div>
-          </div>
-          <div>
-            <div class="nota-badge">NOTA DE PEDIDO</div>
-            <div class="nota-meta-grid">
-              <div class="nota-meta-item">
-                <span class="nota-meta-label">Nº Pedido</span>
-                <span class="nota-meta-val" id="disp-num">—</span>
-              </div>
-              <div class="nota-meta-item">
-                <span class="nota-meta-label">Data</span>
-                <span class="nota-meta-val" id="disp-data">—</span>
-              </div>
-              <div class="nota-meta-item">
-                <span class="nota-meta-label">Vendedor(a)</span>
-                <span class="nota-meta-val" id="disp-resp">—</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info do pedido -->
-        <div class="nota-section">
-          <div class="sec-header">
-            <div class="sec-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="14" height="14" rx="1"/><path d="M7 2v4M13 2v4M3 9h14"/></svg></div>
-            <span class="sec-title">Informações do Pedido</span>
-          </div>
-          <div class="sec-body">
-            <div class="nota-2col">
-              <div class="field">
-                <label class="field-label" for="num-pedido">Número do Pedido <span class="req">*</span></label>
-                <input class="field-input" type="text" id="num-pedido" placeholder="PED-2025-001" />
-              </div>
-              <div class="field">
-                <label class="field-label" for="data-pedido">Data</label>
-                <input class="field-input" type="date" id="data-pedido" />
-              </div>
-            </div>
-            <div class="field">
-              <label class="field-label" for="responsavel">Vendedor(a)</label>
-              <input class="field-input" type="text" id="responsavel" placeholder="Nome do funcionário responsável" />
-            </div>
-          </div>
-        </div>
-
-        <!-- 2 colunas: Empresa e Cliente -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--gray-100)">
-
-          <!-- Dados da empresa -->
-          <div class="nota-section" style="border-bottom:none;border-right:1px solid var(--gray-100)">
-            <div class="sec-header">
-              <div class="sec-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-              <span class="sec-title">Dados da Empresa</span>
-            </div>
-            <div class="sec-body">
-              <div class="field">
-                <label class="field-label" for="emp-razao">Razão Social <span class="req">*</span></label>
-                <input class="field-input" type="text" id="emp-razao" placeholder="Junior Substratos LTDA" value="Junior Substratos" />
-              </div>
-              <div class="field">
-                <label class="field-label" for="emp-cnpj">CNPJ</label>
-                <input class="field-input" type="text" id="emp-cnpj" placeholder="00.000.000/0000-00" maxlength="18" />
-              </div>
-              <div class="field">
-                <label class="field-label" for="emp-end">Endereço</label>
-                <input class="field-input" type="text" id="emp-end" placeholder="Rua, número, cidade - UF" />
-              </div>
-              <div class="nota-2col">
-                <div class="field">
-                  <label class="field-label" for="emp-tel">Telefone</label>
-                  <input class="field-input" type="text" id="emp-tel" placeholder="(00) 9 0000-0000" maxlength="15" />
-                </div>
-                <div class="field">
-                  <label class="field-label" for="emp-email">E-mail</label>
-                  <input class="field-input" type="email" id="emp-email" placeholder="contato@empresa.com" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dados do cliente -->
-          <div class="nota-section" style="border-bottom:none">
-            <div class="sec-header">
-              <div class="sec-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="6" r="4"/><path d="M2 18c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
-              <span class="sec-title">Dados do Cliente</span>
-              <div class="sec-action no-print">
-                <button class="btn btn-secondary btn-sm" id="btn-buscar-cli">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3"/></svg>
-                  Buscar cliente
-                </button>
-              </div>
-            </div>
-            <div class="sec-body">
-              <div class="field">
-                <label class="field-label" for="cli-nome">Nome / Razão Social <span class="req">*</span></label>
-                <input class="field-input" type="text" id="cli-nome" placeholder="Nome completo ou razão social" />
-              </div>
-              <div class="field">
-                <label class="field-label" for="cli-cpfcnpj">CPF / CNPJ</label>
-                <input class="field-input" type="text" id="cli-cpfcnpj" placeholder="000.000.000-00" maxlength="18" />
-              </div>
-              <div class="field">
-                <label class="field-label" for="cli-end">Endereço</label>
-                <input class="field-input" type="text" id="cli-end" placeholder="Rua, número, cidade - UF" />
-              </div>
-              <div class="nota-2col">
-                <div class="field">
-                  <label class="field-label" for="cli-tel">Telefone</label>
-                  <input class="field-input" type="text" id="cli-tel" placeholder="(00) 9 0000-0000" maxlength="15" />
-                </div>
-                <div class="field">
-                  <label class="field-label" for="cli-email">E-mail</label>
-                  <input class="field-input" type="email" id="cli-email" placeholder="cliente@email.com" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Itens -->
-        <div class="nota-section">
-          <div class="sec-header">
-            <div class="sec-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h12M4 10h12M4 14h8"/></svg></div>
-            <span class="sec-title">Itens do Pedido</span>
-            <div class="sec-action no-print">
-              <button class="btn btn-primary btn-sm btn-add-row" id="btn-add-item">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M6 10h8"/></svg>
-                Adicionar Item
-              </button>
-            </div>
-          </div>
-          <div style="overflow-x:auto">
-            <table class="items-table" id="items-table">
-              <thead>
-                <tr>
-                  <th class="col-num">#</th>
-                  <th class="col-desc">Descrição do Item</th>
-                  <th class="col-qty text-right">Qtd</th>
-                  <th class="col-unit text-right">Valor Unit.</th>
-                  <th class="col-tot text-right">Total</th>
-                  <th class="col-del no-print"></th>
-                </tr>
-              </thead>
-              <tbody id="items-tbody">
-                <tr id="empty-row"><td colspan="6" class="table-empty-row">Nenhum item. Clique em <strong>Adicionar Item</strong>.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Totais + Observações -->
-        <div class="nota-section">
-          <div class="totais-layout">
-            <div class="obs-area">
-              <label class="field-label">Observações</label>
-              <textarea class="field-input obs-textarea" id="obs" placeholder="Condições de entrega, pagamento, validade da proposta…"></textarea>
-            </div>
-            <div class="totais-box">
-              <div class="tot-row">
-                <span class="tot-label">Subtotal</span>
-                <span class="tot-val" id="val-sub">R$ 0,00</span>
-              </div>
-              <div>
-                <div class="disc-line">
-                  <span class="disc-label">Desconto (%)</span>
-                  <input class="disc-input" type="number" id="disc-pct" min="0" max="100" step="0.01" placeholder="0" />
-                </div>
-                <div class="tot-row" style="margin-top:6px">
-                  <span class="tot-label" style="font-size:12px">Valor desconto</span>
-                  <span class="tot-val tot-neg" id="val-disc">— R$ 0,00</span>
-                </div>
-              </div>
-              <div class="tot-divider"></div>
-              <div class="tot-row tot-final">
-                <span class="tot-label">TOTAL FINAL</span>
-                <span class="tot-val" id="val-total">R$ 0,00</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Assinaturas -->
-        <div class="nota-section">
-          <div class="sec-header">
-            <div class="sec-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l3-3 9-9a2 2 0 00-3-3L3 11v3h3z"/></svg></div>
-            <span class="sec-title">Assinaturas</span>
-          </div>
-          <div class="sec-body">
-            <div class="sig-grid" style="grid-template-columns:repeat(2,1fr)">
-              <div class="sig-block">
-                <div class="sig-line"></div>
-                <p class="sig-label">Vendedor(a)</p>
-                <p class="sig-sub" id="sig-resp">—</p>
-              </div>
-              <div class="sig-block">
-                <div class="sig-line"></div>
-                <p class="sig-label">Assinatura do Cliente</p>
-                <p class="sig-sub" id="sig-cli">—</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer da nota -->
-        <div class="nota-footer">
-          <p>Junior Substratos · Emitido em <span id="nota-footer-date"></span></p>
-          <p>Documento de uso interno. Não possui valor fiscal.</p>
-        </div>
-      </div><!-- /nota-doc -->
-
-    </main>
-  </div>
-</div>
-
-<!-- Modal buscar cliente -->
-<div class="modal-overlay" id="modal-cli">
-  <div class="modal">
-    <div class="modal-head">
-      <span class="modal-title">Buscar Cliente</span>
-      <button class="modal-close" id="modal-cli-close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5L5 15M5 5l10 10"/></svg></button>
-    </div>
-    <div class="modal-body">
-      <div class="search-wrap" style="width:100%">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3"/></svg>
-        <input class="search-input" type="text" id="modal-cli-search" placeholder="Buscar por nome…" style="width:100%" />
-      </div>
-      <div id="modal-cli-list" style="max-height:280px;overflow-y:auto"></div>
-    </div>
-  </div>
-</div>
-
-<!-- PDF Loading -->
-<div class="pdf-overlay hidden" id="pdf-overlay">
-  <div class="pdf-box">
-    <div class="pdf-spinner"></div>
-    <p>Gerando PDF…</p>
-  </div>
-</div>
-
-<div id="toast"></div>
-<script src="utils.js"></script>
-<script>
-(function() {
-  requireAuth();
-  startClock('clock');
-  initSidebar();
-
-  // ── Estado dos itens ──
-  let items = [];
-  let itemIdCnt = 1;
-  let editingId = null; // ID da nota sendo editada (se vier do histórico)
-
-  // ── Data automática ──
-  const dataEl = document.getElementById('data-pedido');
-  dataEl.value = todayISO();
-  document.getElementById('nota-footer-date').textContent = todayDisplay();
-
-  // Número sugerido
-  const yr = new Date().getFullYear();
-  const seq = String(Math.floor(Math.random()*900+100));
-  document.getElementById('num-pedido').value = `PED-${yr}-${seq}`;
-
-  // ── Modo edição: carrega nota pelo ?edit=ID (aplicado após funções estarem prontas) ──
-  const editId = new URLSearchParams(window.location.search).get('edit');
-  if (editId) {
-    const notaEdit = getNotas().find(n => n.id === editId);
-    if (notaEdit) {
-      editingId = editId;
+  // ── Modo edição via ?edit=ID ──
+  var _editId = new URLSearchParams(window.location.search).get('edit');
+  window._editingNotaId = null;
+  if (_editId) {
+    var _notaEdit = getNotas().find(function(n){ return n.id === _editId; });
+    if (_notaEdit) {
+      window._editingNotaId = _editId;
       document.getElementById('page-heading').textContent = 'Editar Nota de Pedido';
-      document.getElementById('page-sub').textContent = 'Edite os dados da nota e salve as alterações.';
+      document.getElementById('page-sub').textContent = 'Edite os dados e salve as alterações.';
       document.getElementById('btn-salvar-label').textContent = 'Salvar alterações';
       document.title = 'Editar Nota — Junior Substratos';
-      // Guarda para aplicar depois que renderItems estiver definido
-      window._notaEditPendente = notaEdit;
+      // Aplica dados após funções estarem prontas
+      window._notaEditPendente = _notaEdit;
     }
   }
 
-  // ── Sync displays ──
-  function syncMeta() {
-    document.getElementById('disp-num').textContent = document.getElementById('num-pedido').value || '—';
-    document.getElementById('disp-data').textContent = isoToDisplay(dataEl.value);
-    const resp = document.getElementById('responsavel').value;
-    document.getElementById('disp-resp').textContent = resp || '—';
-    document.getElementById('sig-resp').textContent = resp || '—';
-    document.getElementById('sig-cli').textContent = document.getElementById('cli-nome').value || '—';
-  }
-  ['num-pedido','data-pedido','responsavel','cli-nome'].forEach(id =>
-    document.getElementById(id).addEventListener('input', syncMeta)
-  );
-  syncMeta();
+  // ── Pré-carrega produtos e clientes para autocomplete/busca ──
+  if (typeof dbGetProdutos === 'function') dbGetProdutos().then(function(p){ window._cachedProdutos = p; });
+  if (typeof dbGetClientes === 'function') dbGetClientes().then(function(c){ window._cachedClientes = c; });
 
-  // ── Pré-carrega produtos para autocomplete ──
-  dbGetProdutos().then(p => { window._cachedProdutos = p; });
-
-  // ── Máscaras ──
-  document.getElementById('emp-cnpj').addEventListener('input', function(){ this.value = maskCnpj(this.value); });
-  document.getElementById('cli-cpfcnpj').addEventListener('input', function(){ this.value = maskCpfCnpj(this.value); });
-  document.getElementById('emp-tel').addEventListener('input', function(){ this.value = maskPhone(this.value); });
-  document.getElementById('cli-tel').addEventListener('input', function(){ this.value = maskPhone(this.value); });
-
-  // ── Tabela de itens ──
-  // ── Autocomplete dropdown ──
-  function createAutocomplete(inputEl, item, tr) {
-    let dropdown = null;
-
-    function closeDropdown() {
-      if (dropdown) { dropdown.remove(); dropdown = null; }
-    }
-
-    function openDropdown(q) {
-      closeDropdown();
-      const prods = (window._cachedProdutos || getProdutos()).filter(p =>
-        p.nome.toLowerCase().includes(q.toLowerCase()) ||
-        (p.codigo && p.codigo.toLowerCase().includes(q.toLowerCase()))
-      );
-      if (!prods.length) return;
-
-      dropdown = document.createElement('div');
-      dropdown.style.cssText = `
-        position:absolute; z-index:9999; background:#fff;
-        border:1.5px solid var(--moss-300); border-radius:var(--r-md);
-        box-shadow:var(--sh-md); max-height:200px; overflow-y:auto;
-        min-width:280px; top:100%; left:0;
-      `;
-
-      prods.forEach(p => {
-        const opt = document.createElement('div');
-        opt.style.cssText = 'padding:9px 13px; cursor:pointer; border-bottom:1px solid var(--cream-mid); display:flex; align-items:center; gap:10px;';
-        opt.innerHTML = `
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--ink-soft)">${esc(p.nome)}</div>
-            ${p.codigo ? `<div style="font-size:11px;color:var(--moss-600);font-family:monospace">${esc(p.codigo)}</div>` : ''}
-          </div>
-          <div style="font-size:13px;font-weight:700;color:var(--moss-700);white-space:nowrap">${fmtBRL(p.preco)}</div>`;
-        opt.addEventListener('mouseenter', () => opt.style.background = 'var(--moss-50)');
-        opt.addEventListener('mouseleave', () => opt.style.background = '');
-        opt.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          // Preenche a linha com os dados do produto
-          const itm = items.find(i => i.id === item.id);
-          if (!itm) return;
-          itm.desc = p.nome;
-          itm.unit = p.preco;
-          itm.total = (itm.qty || 1) * p.preco;
-
-          inputEl.value = p.nome;
-          const unitInp = tr.querySelector('[data-field="unit"]');
-          if (unitInp) unitInp.value = p.preco.toFixed(2).replace('.', ',');
-          const span = tr.querySelector('.item-total');
-          if (span) span.textContent = itm.total > 0 ? fmtBRL(itm.total) : '—';
-          recalc();
-          closeDropdown();
-        });
-        dropdown.appendChild(opt);
-      });
-
-      const wrap = inputEl.parentElement;
-      wrap.style.position = 'relative';
-      wrap.appendChild(dropdown);
-    }
-
-    inputEl.addEventListener('input', function() {
-      if (this.value.length >= 1) openDropdown(this.value);
-      else closeDropdown();
-    });
-    inputEl.addEventListener('blur', () => setTimeout(closeDropdown, 150));
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeDropdown();
-    });
-  }
-
-  function createRow(item) {
-    const tr = document.createElement('tr');
-    tr.dataset.id = item.id;
-    tr.innerHTML = `
-      <td class="col-num">${item.seq}</td>
-      <td class="col-desc"><input class="table-input" type="text" placeholder="Descrição do produto/serviço" value="${esc(item.desc)}" data-field="desc" autocomplete="off" /></td>
-      <td class="col-qty"><input class="table-input tr" type="number" min="1" step="1" placeholder="1" value="${item.qty||''}" data-field="qty" /></td>
-      <td class="col-unit"><input class="table-input tr" type="text" placeholder="0,00" value="${item.unit?Number(item.unit).toFixed(2).replace('.',','):''}" data-field="unit" /></td>
-      <td class="col-tot"><span class="item-total">${item.total>0?fmtBRL(item.total):'—'}</span></td>
-      <td class="col-del no-print"><button class="btn-icon danger" data-remove="${item.id}" title="Remover"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg></button></td>
-    `;
-    // Listeners
-    tr.querySelectorAll('[data-field]').forEach(inp => {
-      inp.addEventListener('input', function() {
-        const itm = items.find(i=>i.id===item.id);
-        if (!itm) return;
-        if (this.dataset.field==='desc') itm.desc = this.value;
-        if (this.dataset.field==='qty')  itm.qty  = parseFloat(this.value)||0;
-        if (this.dataset.field==='unit') itm.unit = parseMoney(this.value);
-        itm.total = (itm.qty||0) * (itm.unit||0);
-        const span = tr.querySelector('.item-total');
-        span.textContent = itm.total>0 ? fmtBRL(itm.total) : '—';
-        recalc();
-      });
-      if (inp.dataset.field==='unit') {
-        inp.addEventListener('blur', function(){
-          const v = parseMoney(this.value);
-          if(v>0) this.value = v.toFixed(2).replace('.',',');
-        });
-      }
-    });
-    tr.querySelector('[data-remove]').addEventListener('click', function(){
-      items = items.filter(i=>i.id!==item.id);
-      renderItems();
-      recalc();
-    });
-
-    // Autocomplete na descrição
-    const descInp = tr.querySelector('[data-field="desc"]');
-    createAutocomplete(descInp, item, tr);
-
-    return tr;
-  }
-
-  function renderItems() {
-    const tbody = document.getElementById('items-tbody');
-    tbody.innerHTML = '';
-    if (items.length === 0) {
-      tbody.innerHTML = `<tr id="empty-row"><td colspan="6" class="table-empty-row">Nenhum item. Clique em <strong>Adicionar Item</strong>.</td></tr>`;
-      return;
-    }
-    items.forEach((item, idx) => { item.seq = idx+1; tbody.appendChild(createRow(item)); });
-  }
-
-  function recalc() {
-    const sub = items.reduce((a,i)=>a+(i.total||0),0);
-    const pct = parseFloat(document.getElementById('disc-pct').value)||0;
-    const disc = sub * (Math.min(100,Math.max(0,pct))/100);
-    const total = sub - disc;
-    document.getElementById('val-sub').textContent   = fmtBRL(sub);
-    document.getElementById('val-disc').textContent  = `— ${fmtBRL(disc)}`;
-    document.getElementById('val-total').textContent = fmtBRL(total);
-    return { sub, disc, total };
-  }
-
-  document.getElementById('btn-add-item').addEventListener('click', function() {
-    items.push({ id: uid(), seq: items.length+1, desc:'', qty:1, unit:0, total:0 });
-    renderItems();
-    // Foca no último input de descrição
-    const rows = document.querySelectorAll('#items-tbody tr');
-    const last = rows[rows.length-1];
-    if (last) last.querySelector('input')?.focus();
+  // Ctrl+Enter adiciona item
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
   });
 
-  document.getElementById('disc-pct').addEventListener('input', recalc);
-  renderItems();
-
-  // ── Aplica dados de edição (após funções definidas) ──
+  // Aplica edição após funções definidas
   if (window._notaEditPendente) {
-    const notaEdit = window._notaEditPendente;
-    const emp = notaEdit.empresa || {};
-    const cli = notaEdit.clienteData || {};
-    document.getElementById('num-pedido').value   = notaEdit.num || '';
-    dataEl.value                                  = notaEdit.data || todayISO();
-    document.getElementById('responsavel').value  = notaEdit.resp || '';
-    document.getElementById('emp-razao').value    = emp.razao || 'Junior Substratos';
-    document.getElementById('emp-cnpj').value     = maskCnpj(emp.cnpj || '');
-    document.getElementById('emp-end').value      = emp.end   || '';
-    document.getElementById('emp-tel').value      = maskPhone(emp.tel || '');
-    document.getElementById('emp-email').value    = emp.email || '';
-    document.getElementById('cli-nome').value     = cli.nome  || notaEdit.cliente || '';
-    document.getElementById('cli-cpfcnpj').value  = maskCpfCnpj(cli.cpfcnpj || '');
-    document.getElementById('cli-end').value      = cli.endereco || '';
-    document.getElementById('cli-tel').value      = maskPhone(cli.tel || '');
-    document.getElementById('cli-email').value    = cli.email || '';
-    document.getElementById('obs').value          = notaEdit.obs || '';
-    if (notaEdit.discPct) document.getElementById('disc-pct').value = notaEdit.discPct;
-    items = (notaEdit.items || []).map(i => ({ ...i }));
+    var _ne = window._notaEditPendente;
+    var _emp = _ne.empresa || {};
+    var _cli = _ne.clienteData || {};
+    document.getElementById('num-pedido').value  = _ne.num || '';
+    dataEl.value                                 = _ne.data || todayISO();
+    document.getElementById('responsavel').value = _ne.resp || '';
+    document.getElementById('emp-razao').value   = _emp.razao || 'Junior Substratos';
+    document.getElementById('emp-cnpj').value    = maskCnpj(_emp.cnpj || '');
+    document.getElementById('emp-end').value     = _emp.end || '';
+    document.getElementById('emp-tel').value     = maskPhone(_emp.tel || '');
+    document.getElementById('emp-email').value   = _emp.email || '';
+    document.getElementById('cli-nome').value    = _cli.nome || _ne.cliente || '';
+    document.getElementById('cli-cpfcnpj').value = maskCpfCnpj(_cli.cpfcnpj || '');
+    document.getElementById('cli-end').value     = _cli.endereco || '';
+    document.getElementById('cli-tel').value     = maskPhone(_cli.tel || '');
+    document.getElementById('cli-email').value   = _cli.email || '';
+    document.getElementById('obs').value         = _ne.obs || '';
+    if (_ne.discPct) document.getElementById('disc-pct').value = _ne.discPct;
+    items = (_ne.items || []).map(function(i){ return Object.assign({},i); });
     itemIdCnt = items.length + 1;
     renderItems();
     recalc();
     syncMeta();
     delete window._notaEditPendente;
   }
-
-  // ── Buscar cliente ──
-  document.getElementById('btn-buscar-cli').addEventListener('click', openCliModal);
-  document.getElementById('modal-cli-close').addEventListener('click', () => document.getElementById('modal-cli').classList.remove('open'));
-
-  let _cachedClientes = null;
-  async function openCliModal() {
-    const modal = document.getElementById('modal-cli');
-    modal.classList.add('open');
-    const list = document.getElementById('modal-cli-list');
-    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
-    if (!_cachedClientes) _cachedClientes = await dbGetClientes();
-    renderCliList('');
-    setTimeout(()=>document.getElementById('modal-cli-search').focus(),100);
-  }
-
-  function renderCliList(q) {
-    const list = document.getElementById('modal-cli-list');
-    const clientes = (_cachedClientes || getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
-    if (!clientes.length) {
-      list.innerHTML = `<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>`;
-      return;
-    }
-    list.innerHTML = clientes.map(c => `
-      <div style="padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background .15s"
-           onmouseover="this.style.background='var(--g-pale)'" onmouseout="this.style.background=''"
-           data-cid="${esc(c.id)}">
-        <div style="font-weight:700;font-size:13px;color:var(--gray-700)">${esc(c.nome)}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${esc(c.cpfcnpj||'')} ${c.tel?'· '+esc(c.tel):''}</div>
-      </div>
-    `).join('');
-    list.querySelectorAll('[data-cid]').forEach(el => {
-      el.addEventListener('click', function() {
-        const c = getClientes().find(x=>x.id===this.dataset.cid);
-        if (!c) return;
-        document.getElementById('cli-nome').value    = c.nome||'';
-        document.getElementById('cli-cpfcnpj').value = c.cpfcnpj||'';
-        document.getElementById('cli-tel').value     = c.tel||'';
-        document.getElementById('cli-email').value   = c.email||'';
-        document.getElementById('cli-end').value     = c.endereco||'';
-        document.getElementById('modal-cli').classList.remove('open');
-        syncMeta();
-        toast('Cliente preenchido!','ok',2000);
-      });
-    });
-  }
-
-  document.getElementById('modal-cli-search').addEventListener('input', function(){ renderCliList(this.value); });
-
-  // ── Validação ──
-  function validate() {
-    document.querySelectorAll('.field-input.error').forEach(e=>e.classList.remove('error'));
-    const req = [
-      { id:'num-pedido', label:'Número do pedido' },
-      { id:'emp-razao',  label:'Razão social da empresa' },
-      { id:'cli-nome',   label:'Nome do cliente' },
-    ];
-    let ok = true;
-    const missing = [];
-    req.forEach(r => {
-      const el = document.getElementById(r.id);
-      if (!el.value.trim()) { el.classList.add('error'); missing.push(r.label); ok=false; }
-    });
-    if (!ok) { toast(`Preencha: ${missing.join(', ')}`, 'err', 5000); document.querySelector('.field-input.error')?.scrollIntoView({behavior:'smooth',block:'center'}); }
-    if (items.length === 0) { toast('Adicione pelo menos um item.','err'); return false; }
-    return ok;
-  }
-
-  // ── Salvar e PDF ──
-  document.getElementById('btn-salvar').addEventListener('click', async function() {
-    if (!validate()) return;
-    const totals = recalc();
-    syncMeta();
-    document.getElementById('nota-footer-date').textContent = todayDisplay();
-
-    // Monta objeto da nota
-    const notaData = {
-      num:      document.getElementById('num-pedido').value,
-      cliente:  document.getElementById('cli-nome').value,
-      data:     dataEl.value,
-      total:    totals.total,
-      status:   'Emitida',
-      items:    items.map(i=>({...i})),
-      discPct:  document.getElementById('disc-pct').value || '',
-      empresa: {
-        razao: document.getElementById('emp-razao').value,
-        cnpj:  document.getElementById('emp-cnpj').value,
-        end:   document.getElementById('emp-end').value,
-        tel:   document.getElementById('emp-tel').value,
-        email: document.getElementById('emp-email').value,
-      },
-      clienteData: {
-        nome:     document.getElementById('cli-nome').value,
-        cpfcnpj:  document.getElementById('cli-cpfcnpj').value,
-        tel:      document.getElementById('cli-tel').value,
-        email:    document.getElementById('cli-email').value,
-        endereco: document.getElementById('cli-end').value,
-      },
-      obs:  document.getElementById('obs').value,
-      resp: document.getElementById('responsavel').value,
-    };
-
-    let nota;
-    if (editingId) {
-      // Modo edição: busca nota original para manter createdAt
-      const notasAtual = getNotas();
-      const original = notasAtual.find(n => n.id === editingId) || {};
-      nota = { ...original, ...notaData, id: editingId, updatedAt: Date.now() };
-    } else {
-      nota = { id: uid(), createdAt: Date.now(), ...notaData };
-    }
-    // Salva no Firestore e no localStorage (backup)
-    dbSaveNota(nota);
-    const notas = getNotas();
-    const idx = notas.findIndex(n => n.id === nota.id);
-    if (idx >= 0) notas[idx] = nota; else notas.push(nota);
-    saveNotas(notas);
-    if (editingId) toast('Nota atualizada!', 'ok', 3000);
-
-    // Exporta PDF
-    const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
-    await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
-  });
-
-  // ── Imprimir ──
-  document.getElementById('btn-print').addEventListener('click', function() {
-    if (!validate()) return;
-    syncMeta();
-    document.getElementById('nota-footer-date').textContent = todayDisplay();
-    window.print();
-  });
-
-  // ── Limpar ──
-  document.getElementById('btn-clear').addEventListener('click', function() {
-    if (!confirm('Limpar todo o formulário?')) return;
-    document.querySelectorAll('.field-input').forEach(e=>{e.value='';e.classList.remove('error');});
-    document.getElementById('emp-razao').value = 'Junior Substratos';
-    document.getElementById('num-pedido').value = `PED-${yr}-${String(Math.floor(Math.random()*900+100))}`;
-    dataEl.value = todayISO();
-    document.getElementById('disc-pct').value = '';
-    items = [];
-    itemIdCnt = 1;
-    renderItems();
-    recalc();
-    syncMeta();
-    toast('Formulário limpo.','info',2000);
-  });
-
-  // Ctrl+Enter adiciona item
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
-  });
 })();
 </script>
 <script>
@@ -1638,6 +721,179 @@ tr:last-child td{border-bottom:none}
       });
     });
   })();
+</script>
+
+<script>
+// ── Gerador de PDF isolado ──
+async function gerarPDFNota(nota) {
+  var emp = nota.empresa || {};
+  var cli = nota.clienteData || {};
+  var dataRaw = nota.data || '';
+  var dataFmt = dataRaw;
+  if (dataRaw && dataRaw.indexOf('-') > -1) {
+    var parts = dataRaw.split('-');
+    dataFmt = parts[2] + '/' + parts[1] + '/' + parts[0];
+  }
+
+  var pdfRows = '';
+  var itens = nota.items || [];
+  if (itens.length === 0) {
+    pdfRows = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
+  } else {
+    for (var i = 0; i < itens.length; i++) {
+      var it = itens[i];
+      var tot = Number(it.total || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
+      var uni = Number(it.unit || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
+      pdfRows += '<tr>';
+      pdfRows += '<td style="text-align:center;color:#666;width:36px;padding:7px 8px">' + (i+1) + '</td>';
+      pdfRows += '<td style="padding:7px 8px">' + (it.desc || '') + '</td>';
+      pdfRows += '<td style="text-align:right;width:55px;padding:7px 8px">' + (it.qty || 1) + '</td>';
+      pdfRows += '<td style="text-align:right;width:95px;padding:7px 8px">' + uni + '</td>';
+      pdfRows += '<td style="text-align:right;width:95px;font-weight:600;padding:7px 8px">' + tot + '</td>';
+      pdfRows += '</tr>';
+    }
+  }
+
+  var sub = Number(0), disc = Number(0);
+  for (var j = 0; j < itens.length; j++) sub += (itens[j].total || 0);
+  var pct = parseFloat(nota.discPct || 0);
+  disc = sub * (Math.min(100, Math.max(0, pct)) / 100);
+  var total = sub - disc;
+  var fmtBRLpdf = function(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
+
+  var logoSvg = '';
+  try {
+    var r = await fetch('juniorsubstratos.svg');
+    var svgRaw = await r.text();
+    logoSvg = svgRaw
+      .replace(/fill="#235d47"/g, 'fill="#ffffff"')
+      .replace(/fill="#47b06b"/g, 'fill="#a8e6c0"')
+      .replace(/.cls-1\s*\{[^}]*\}/g, '.cls-1{fill:#ffffff}')
+      .replace(/.cls-2\s*\{[^}]*\}/g, '.cls-2{fill:#a8e6c0}')
+      .replace(/.cls-3\s*\{[^}]*\}/g, '.cls-3{fill:#a8e6c0}');
+  } catch(e) {
+    logoSvg = '<span style="font-size:18px;font-weight:800;color:#fff">Junior Substratos</span>';
+  }
+
+  var css = [
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#222;background:#f0ede8}',
+    '.page{width:210mm;margin:0 auto;background:#fff;box-shadow:0 0 30px rgba(0,0,0,.15)}',
+    '.hdr{background:linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%);padding:16px 22px;display:flex;justify-content:space-between;align-items:center}',
+    '.hdr-logo{width:155px;flex-shrink:0;display:flex;align-items:center}',
+    '.hdr-logo svg{width:155px;height:auto;display:block}',
+    '.hdr-lbl{font-size:10px;letter-spacing:.12em;opacity:.65;color:#fff;margin-left:10px;text-transform:uppercase}',
+    '.hdr-right{text-align:right}',
+    '.badge{border:1px solid rgba(255,255,255,.45);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.1em;color:#fff;display:inline-block;margin-bottom:8px}',
+    '.meta-row{color:#fff;font-size:11px;margin-bottom:2px}',
+    '.meta-lbl{opacity:.55;margin-right:4px;font-size:9px;text-transform:uppercase;letter-spacing:.06em}',
+    '.meta-val{font-weight:700}',
+    '.sec{border-bottom:1px solid #e5e5e0}',
+    '.sec-hdr{background:#f5f4f0;padding:8px 20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#235d47;border-bottom:1px solid #e5e5e0}',
+    '.sec-body{padding:14px 20px}',
+    '.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}',
+    '.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:3px}',
+    '.fv{font-size:12px;color:#222;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafaf8;min-height:28px;word-break:break-word}',
+    '.cols2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e0}',
+    '.cl{border-right:1px solid #e5e5e0}',
+    'table{width:100%;border-collapse:collapse}',
+    'th{background:#235d47;color:#fff;padding:8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}',
+    'td{border-bottom:1px solid #f0ede8;font-size:12px;vertical-align:middle}',
+    'tr:last-child td{border-bottom:none}',
+    '.tot-wrap{display:flex;gap:20px;padding:14px 20px;align-items:flex-start}',
+    '.obs-wrap{flex:1}',
+    '.obs-box{border:1px solid #ddd;border-radius:4px;padding:10px;min-height:64px;font-size:11px;color:#444;white-space:pre-wrap;background:#fafaf8}',
+    '.tot-tbl{min-width:210px;background:#f5f4f0;border:1px solid #e5e5e0;border-radius:6px;padding:12px}',
+    '.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#555}',
+    '.tf{font-size:16px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:8px;padding-top:8px}',
+    '.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:28px 44px}',
+    '.sig-line{border-bottom:1.5px solid #333;height:40px;margin-bottom:7px}',
+    '.sig-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;text-align:center;color:#555}',
+    '.sig-sub{font-size:11px;text-align:center;color:#888;margin-top:3px}',
+    '.ftr{background:linear-gradient(135deg,#1a4535,#235d47);color:rgba(255,255,255,.6);font-size:9px;padding:8px 22px;display:flex;justify-content:space-between}',
+    '@media print{@page{margin:0;size:A4}body{background:#fff}.page{box-shadow:none;width:100%}}'
+  ].join('');
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>';
+  html += '<title>' + nota.num + ' - Junior Substratos</title>';
+  html += '<style>' + css + '</style></head><body>';
+  html += '<div class="page">';
+
+  // Header
+  html += '<div class="hdr">';
+  html += '<div style="display:flex;align-items:center"><div class="hdr-logo">' + logoSvg + '</div>';
+  html += '<span class="hdr-lbl">Nota de Pedido</span></div>';
+  html += '<div class="hdr-right">';
+  html += '<div class="badge">NOTA DE PEDIDO</div>';
+  html += '<div class="meta-row"><span class="meta-lbl">Nº Pedido</span><span class="meta-val">' + (nota.num||'') + '</span></div>';
+  html += '<div class="meta-row"><span class="meta-lbl">Data</span><span class="meta-val">' + dataFmt + '</span></div>';
+  html += '<div class="meta-row"><span class="meta-lbl">Vendedor(a)</span><span class="meta-val">' + (nota.resp||'—') + '</span></div>';
+  html += '</div></div>';
+
+  // Informacoes
+  html += '<div class="sec"><div class="sec-hdr">Informações do Pedido</div><div class="sec-body">';
+  html += '<div class="g2" style="margin-bottom:12px">';
+  html += '<div><div class="fl">Número do Pedido</div><div class="fv">' + (nota.num||'') + '</div></div>';
+  html += '<div><div class="fl">Data</div><div class="fv">' + dataFmt + '</div></div></div>';
+  html += '<div><div class="fl">Vendedor(a)</div><div class="fv">' + (nota.resp||'—') + '</div></div>';
+  html += '</div></div>';
+
+  // Empresa + Cliente
+  html += '<div class="cols2">';
+  html += '<div class="cl"><div class="sec-hdr">Dados da Empresa</div><div class="sec-body">';
+  html += '<div style="margin-bottom:10px"><div class="fl">Razão Social</div><div class="fv">' + (emp.razao||'—') + '</div></div>';
+  html += '<div style="margin-bottom:10px"><div class="fl">CNPJ</div><div class="fv">' + (emp.cnpj||'—') + '</div></div>';
+  html += '<div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">' + (emp.end||'—') + '</div></div>';
+  html += '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">' + (emp.tel||'—') + '</div></div>';
+  html += '<div><div class="fl">E-mail</div><div class="fv">' + (emp.email||'—') + '</div></div></div>';
+  html += '</div></div>';
+  html += '<div><div class="sec-hdr">Dados do Cliente</div><div class="sec-body">';
+  html += '<div style="margin-bottom:10px"><div class="fl">Nome / Razão Social</div><div class="fv">' + (cli.nome||nota.cliente||'—') + '</div></div>';
+  html += '<div style="margin-bottom:10px"><div class="fl">CPF / CNPJ</div><div class="fv">' + (cli.cpfcnpj||'—') + '</div></div>';
+  html += '<div style="margin-bottom:10px"><div class="fl">Endereço</div><div class="fv">' + (cli.endereco||'—') + '</div></div>';
+  html += '<div class="g2"><div><div class="fl">Telefone</div><div class="fv">' + (cli.tel||'—') + '</div></div>';
+  html += '<div><div class="fl">E-mail</div><div class="fv">' + (cli.email||'—') + '</div></div></div>';
+  html += '</div></div></div>';
+
+  // Itens
+  html += '<div class="sec"><div class="sec-hdr">Itens do Pedido</div>';
+  html += '<table><thead><tr>';
+  html += '<th style="text-align:center;width:36px">#</th>';
+  html += '<th style="text-align:left">Descrição do Item</th>';
+  html += '<th style="text-align:right;width:55px">Qtd</th>';
+  html += '<th style="text-align:right;width:95px">Valor Unit.</th>';
+  html += '<th style="text-align:right;width:95px">Total</th>';
+  html += '</tr></thead><tbody>' + pdfRows + '</tbody></table></div>';
+
+  // Totais + Obs
+  html += '<div class="sec"><div class="tot-wrap">';
+  html += '<div class="obs-wrap"><div class="fl" style="margin-bottom:6px">Observações</div>';
+  html += '<div class="obs-box">' + (nota.obs||'') + '</div></div>';
+  html += '<div class="tot-tbl">';
+  html += '<div class="tr"><span>Subtotal</span><span>' + fmtBRLpdf(sub) + '</span></div>';
+  html += '<div class="tr"><span>Desconto (' + (nota.discPct||0) + '%)</span><span>- ' + fmtBRLpdf(disc) + '</span></div>';
+  html += '<div class="tr tf"><span>TOTAL FINAL</span><span>' + fmtBRLpdf(total) + '</span></div>';
+  html += '</div></div></div>';
+
+  // Assinaturas
+  html += '<div class="sec"><div class="sec-hdr">Assinaturas</div><div class="sig-grid">';
+  html += '<div><div class="sig-line"></div><div class="sig-lbl">Vendedor(a)</div><div class="sig-sub">' + (nota.resp||'—') + '</div></div>';
+  html += '<div><div class="sig-line"></div><div class="sig-lbl">Assinatura do Cliente</div><div class="sig-sub">' + (cli.nome||nota.cliente||'') + '</div></div>';
+  html += '</div></div>';
+
+  // Footer
+  html += '<div class="ftr">';
+  html += '<span>Junior Substratos · Emitido em ' + dataFmt + '</span>';
+  html += '<span>Documento de uso interno. Não possui valor fiscal.</span>';
+  html += '</div></div>';
+  html += '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script>';
+  html += '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  if (typeof toast === 'function') toast('Nota gerada! Salve como PDF na janela que abriu.', 'ok', 5000);
+}
 </script>
 </body>
 </html>
