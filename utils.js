@@ -259,48 +259,43 @@ async function exportToPDF(elementId, filename) {
   const overlay = document.getElementById('pdf-overlay');
   if (overlay) overlay.classList.remove('hidden');
 
+  let wrapper = null;
+
   try {
     const { jsPDF } = window.jspdf;
     const element = document.getElementById(elementId);
 
-    // Clona o elemento em um container isolado fora do layout
+    // Clona o elemento em container isolado com largura fixa de desktop
     const clone = element.cloneNode(true);
     clone.querySelectorAll('.no-print, .col-del').forEach(el => el.remove());
 
-    // Força layout de 2 colunas no clone (evita corte em mobile)
+    // Força layout de 2 colunas independente do tamanho de tela
     clone.querySelectorAll('.nota-2col').forEach(el => {
-      el.style.setProperty('display', 'grid', 'important');
-      el.style.setProperty('grid-template-columns', '1fr 1fr', 'important');
+      el.style.cssText += ';display:grid!important;grid-template-columns:1fr 1fr!important;';
     });
     clone.querySelectorAll('.sig-grid').forEach(el => {
-      el.style.setProperty('display', 'grid', 'important');
-      el.style.setProperty('grid-template-columns', 'repeat(2,1fr)', 'important');
+      el.style.cssText += ';display:grid!important;grid-template-columns:repeat(2,1fr)!important;flex-direction:row!important;';
     });
     clone.querySelectorAll('.nota-doc-header').forEach(el => {
-      el.style.setProperty('flex-direction', 'row', 'important');
-      el.style.setProperty('align-items', 'center', 'important');
+      el.style.cssText += ';flex-direction:row!important;align-items:center!important;';
+    });
+    clone.querySelectorAll('div[style*="flex-direction:column"]').forEach(el => {
+      el.style.flexDirection = 'row';
     });
 
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = [
-      'position:fixed',
-      'top:-99999px',
-      'left:0',
-      'width:900px',
-      'min-width:900px',
-      'background:#fff',
-      'z-index:-1',
-      'padding:0',
-      'margin:0',
-    ].join(';');
+    wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:-99999px;left:0;width:900px;min-width:900px;background:#fff;z-index:-1;padding:0;margin:0;box-sizing:border-box';
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
-    await new Promise(r => setTimeout(r, 400));
+    // Aguarda renderização
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 500));
 
     const canvas = await html2canvas(wrapper, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
       width: 900,
@@ -309,32 +304,42 @@ async function exportToPDF(elementId, filename) {
     });
 
     document.body.removeChild(wrapper);
+    wrapper = null;
 
-    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4', compress:true });
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     const margin = 8;
-    const pageW = 210;
-    const pageH = 297;
-    const usableW = pageW - margin * 2;
-    const usableH = pageH - margin * 2;
+    const usableW = 210 - margin * 2;
+    const usableH = 297 - margin * 2;
     const imgH = (canvas.height / canvas.width) * usableW;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
     if (imgH <= usableH) {
       pdf.addImage(imgData, 'JPEG', margin, margin, usableW, imgH);
     } else {
-      let renderedH = 0;
-      while (renderedH < imgH) {
-        if (renderedH > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', margin, margin - renderedH, usableW, imgH);
-        renderedH += usableH;
+      // Paginação correta sem cortar conteúdo
+      const ratio = canvas.width / usableW; // px por mm
+      const pageHpx = usableH * ratio;
+      let offsetPx = 0;
+      while (offsetPx < canvas.height) {
+        if (offsetPx > 0) pdf.addPage();
+        const sliceH = Math.min(pageHpx, canvas.height - offsetPx);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        sliceCanvas.getContext('2d').drawImage(canvas, 0, offsetPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+        const sliceHmm = (sliceH / canvas.width) * usableW;
+        pdf.addImage(sliceData, 'JPEG', margin, margin, usableW, sliceHmm);
+        offsetPx += pageHpx;
       }
     }
 
     pdf.save(filename || 'nota-pedido.pdf');
     toast('PDF salvo com sucesso!', 'ok');
   } catch (e) {
-    console.error(e);
-    toast('Erro ao gerar PDF. Tente imprimir pelo navegador.', 'err', 5000);
+    console.error('Erro exportToPDF:', e);
+    if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+    toast('Erro ao gerar PDF: ' + e.message, 'err', 6000);
   } finally {
     if (overlay) overlay.classList.add('hidden');
   }
