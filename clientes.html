@@ -285,6 +285,7 @@
   initSidebar();
 
   let deletingId = null;
+  let allClientes = [];
 
   // Máscaras
   document.getElementById('f-cpfcnpj').addEventListener('input', function () { this.value = maskCpfCnpj(this.value); });
@@ -294,8 +295,7 @@
   // ── Renderizar lista ──
   function renderList(q) {
     q = (q || '').toLowerCase();
-    const all = getClientes();
-    const filtered = all.filter(c => !q || c.nome.toLowerCase().includes(q));
+    const filtered = allClientes.filter(c => !q || c.nome.toLowerCase().includes(q));
     const body = document.getElementById('list-body');
     const count = document.getElementById('list-count');
     count.textContent = filtered.length + ' cliente' + (filtered.length !== 1 ? 's' : '');
@@ -418,9 +418,15 @@
       toast('Cliente salvo com sucesso!', 'ok');
     }
 
-    saveClientes(clientes);
-    resetForm();
-    renderList(document.getElementById('search').value);
+    // Salva no Firestore
+    document.getElementById('btn-salvar').disabled = true;
+    dbSaveCliente(data).then(() => {
+      if (editId) { toast('Cliente atualizado!', 'ok'); }
+      else { toast('Cliente salvo!', 'ok'); }
+      document.getElementById('btn-salvar').disabled = false;
+      resetForm();
+      loadAndRender();
+    });
   });
 
   // ── Excluir ──
@@ -436,18 +442,25 @@
   document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
   document.getElementById('modal-del-confirm').addEventListener('click', function () {
     if (!deletingId) return;
-    saveClientes(getClientes().filter(c => c.id !== deletingId));
-    deletingId = null;
-    document.getElementById('modal-del').classList.remove('open');
-    renderList(document.getElementById('search').value);
-    toast('Cliente excluído.', 'info');
+    dbDeleteCliente(deletingId).then(() => {
+      deletingId = null;
+      document.getElementById('modal-del').classList.remove('open');
+      toast('Cliente excluído.', 'info');
+      loadAndRender();
+    });
   });
 
   // ── Busca ──
   document.getElementById('search').addEventListener('input', function () { renderList(this.value); });
 
-  // ── Init ──
-  renderList();
+  // ── Carrega do Firestore e renderiza ──
+  async function loadAndRender() {
+    document.getElementById('list-body').innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+    allClientes = await dbGetClientes();
+    renderList(document.getElementById('search').value);
+  }
+
+  loadAndRender();
 })();
 </script>
 <script>

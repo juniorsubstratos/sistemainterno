@@ -320,6 +320,7 @@
   initSidebar();
 
   let deletingId = null;
+  let allProdutos = [];
 
   // Máscara preço
   document.getElementById('f-preco').addEventListener('blur', function () {
@@ -330,8 +331,7 @@
   // ── Renderizar lista ──
   function renderList(q) {
     q = (q || '').toLowerCase();
-    const all = getProdutos();
-    const filtered = all.filter(p =>
+    const filtered = allProdutos.filter(p =>
       !q ||
       p.nome.toLowerCase().includes(q) ||
       (p.codigo && p.codigo.toLowerCase().includes(q))
@@ -385,7 +385,7 @@
 
   // ── Editar ──
   function editProd(id) {
-    const p = getProdutos().find(x => x.id === id);
+    const p = allProdutos.find(x => x.id === id);
     if (!p) return;
     document.getElementById('edit-id').value  = id;
     document.getElementById('f-nome').value   = p.nome || '';
@@ -451,7 +451,6 @@
     if (!ok) return;
 
     const editId = document.getElementById('edit-id').value;
-    const produtos = getProdutos();
     const data = {
       id:        editId || uid(),
       nome,
@@ -460,26 +459,21 @@
       categoria: document.getElementById('f-categoria').value,
       preco,
       unidade:   document.getElementById('f-unidade').value,
-      criadoEm:  editId ? (produtos.find(p => p.id === editId)?.criadoEm || Date.now()) : Date.now(),
+      criadoEm:  editId ? (allProdutos.find(p => p.id === editId)?.criadoEm || Date.now()) : Date.now(),
     };
 
-    if (editId) {
-      const idx = produtos.findIndex(p => p.id === editId);
-      if (idx > -1) produtos[idx] = data; else produtos.push(data);
-      toast('Produto atualizado!', 'ok');
-    } else {
-      produtos.push(data);
-      toast('Produto salvo com sucesso!', 'ok');
-    }
-
-    saveProdutos(produtos);
-    resetForm();
-    renderList(document.getElementById('search').value);
+    document.getElementById('btn-salvar').disabled = true;
+    dbSaveProduto(data).then(() => {
+      toast(editId ? 'Produto atualizado!' : 'Produto salvo!', 'ok');
+      document.getElementById('btn-salvar').disabled = false;
+      resetForm();
+      loadAndRender();
+    });
   });
 
   // ── Excluir ──
   function confirmDel(id) {
-    const p = getProdutos().find(x => x.id === id);
+    const p = allProdutos.find(x => x.id === id);
     if (!p) return;
     deletingId = id;
     document.getElementById('del-nome').textContent = p.nome;
@@ -490,18 +484,25 @@
   document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
   document.getElementById('modal-del-confirm').addEventListener('click', function () {
     if (!deletingId) return;
-    saveProdutos(getProdutos().filter(p => p.id !== deletingId));
-    deletingId = null;
-    document.getElementById('modal-del').classList.remove('open');
-    renderList(document.getElementById('search').value);
-    toast('Produto excluído.', 'info');
+    dbDeleteProduto(deletingId).then(() => {
+      deletingId = null;
+      document.getElementById('modal-del').classList.remove('open');
+      toast('Produto excluído.', 'info');
+      loadAndRender();
+    });
   });
 
   // ── Busca ──
   document.getElementById('search').addEventListener('input', function () { renderList(this.value); });
 
-  // ── Init ──
-  renderList();
+  // ── Carrega do Firestore ──
+  async function loadAndRender() {
+    document.getElementById('list-body').innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+    allProdutos = await dbGetProdutos();
+    renderList(document.getElementById('search').value);
+  }
+
+  loadAndRender();
 })();
 </script>
 <script>

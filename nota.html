@@ -352,6 +352,9 @@
   );
   syncMeta();
 
+  // ── Pré-carrega produtos para autocomplete ──
+  dbGetProdutos().then(p => { window._cachedProdutos = p; });
+
   // ── Máscaras ──
   document.getElementById('emp-cnpj').addEventListener('input', function(){ this.value = maskCnpj(this.value); });
   document.getElementById('cli-cpfcnpj').addEventListener('input', function(){ this.value = maskCpfCnpj(this.value); });
@@ -369,7 +372,7 @@
 
     function openDropdown(q) {
       closeDropdown();
-      const prods = getProdutos().filter(p =>
+      const prods = (window._cachedProdutos || getProdutos()).filter(p =>
         p.nome.toLowerCase().includes(q.toLowerCase()) ||
         (p.codigo && p.codigo.toLowerCase().includes(q.toLowerCase()))
       );
@@ -538,16 +541,20 @@
   document.getElementById('btn-buscar-cli').addEventListener('click', openCliModal);
   document.getElementById('modal-cli-close').addEventListener('click', () => document.getElementById('modal-cli').classList.remove('open'));
 
-  function openCliModal() {
+  let _cachedClientes = null;
+  async function openCliModal() {
     const modal = document.getElementById('modal-cli');
     modal.classList.add('open');
+    const list = document.getElementById('modal-cli-list');
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+    if (!_cachedClientes) _cachedClientes = await dbGetClientes();
     renderCliList('');
     setTimeout(()=>document.getElementById('modal-cli-search').focus(),100);
   }
 
   function renderCliList(q) {
     const list = document.getElementById('modal-cli-list');
-    const clientes = getClientes().filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
+    const clientes = (_cachedClientes || getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
     if (!clientes.length) {
       list.innerHTML = `<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>`;
       return;
@@ -632,24 +639,21 @@
     };
 
     let nota;
-    const notas = getNotas();
     if (editingId) {
-      // Modo edição: substitui a nota existente mantendo id e createdAt
-      const idx = notas.findIndex(n => n.id === editingId);
-      if (idx >= 0) {
-        nota = { ...notas[idx], ...notaData, updatedAt: Date.now() };
-        notas[idx] = nota;
-      } else {
-        nota = { id: uid(), createdAt: Date.now(), ...notaData };
-        notas.push(nota);
-      }
-      toast('Nota atualizada!', 'ok', 3000);
+      // Modo edição: busca nota original para manter createdAt
+      const notasAtual = getNotas();
+      const original = notasAtual.find(n => n.id === editingId) || {};
+      nota = { ...original, ...notaData, id: editingId, updatedAt: Date.now() };
     } else {
-      // Modo criação: nova nota
       nota = { id: uid(), createdAt: Date.now(), ...notaData };
-      notas.push(nota);
     }
+    // Salva no Firestore e no localStorage (backup)
+    dbSaveNota(nota);
+    const notas = getNotas();
+    const idx = notas.findIndex(n => n.id === nota.id);
+    if (idx >= 0) notas[idx] = nota; else notas.push(nota);
     saveNotas(notas);
+    if (editingId) toast('Nota atualizada!', 'ok', 3000);
 
     // Exporta PDF
     const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
@@ -1271,6 +1275,9 @@ tr:last-child td{border-bottom:none}
   );
   syncMeta();
 
+  // ── Pré-carrega produtos para autocomplete ──
+  dbGetProdutos().then(p => { window._cachedProdutos = p; });
+
   // ── Máscaras ──
   document.getElementById('emp-cnpj').addEventListener('input', function(){ this.value = maskCnpj(this.value); });
   document.getElementById('cli-cpfcnpj').addEventListener('input', function(){ this.value = maskCpfCnpj(this.value); });
@@ -1288,7 +1295,7 @@ tr:last-child td{border-bottom:none}
 
     function openDropdown(q) {
       closeDropdown();
-      const prods = getProdutos().filter(p =>
+      const prods = (window._cachedProdutos || getProdutos()).filter(p =>
         p.nome.toLowerCase().includes(q.toLowerCase()) ||
         (p.codigo && p.codigo.toLowerCase().includes(q.toLowerCase()))
       );
@@ -1457,16 +1464,20 @@ tr:last-child td{border-bottom:none}
   document.getElementById('btn-buscar-cli').addEventListener('click', openCliModal);
   document.getElementById('modal-cli-close').addEventListener('click', () => document.getElementById('modal-cli').classList.remove('open'));
 
-  function openCliModal() {
+  let _cachedClientes = null;
+  async function openCliModal() {
     const modal = document.getElementById('modal-cli');
     modal.classList.add('open');
+    const list = document.getElementById('modal-cli-list');
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+    if (!_cachedClientes) _cachedClientes = await dbGetClientes();
     renderCliList('');
     setTimeout(()=>document.getElementById('modal-cli-search').focus(),100);
   }
 
   function renderCliList(q) {
     const list = document.getElementById('modal-cli-list');
-    const clientes = getClientes().filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
+    const clientes = (_cachedClientes || getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
     if (!clientes.length) {
       list.innerHTML = `<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>`;
       return;
@@ -1551,24 +1562,21 @@ tr:last-child td{border-bottom:none}
     };
 
     let nota;
-    const notas = getNotas();
     if (editingId) {
-      // Modo edição: substitui a nota existente mantendo id e createdAt
-      const idx = notas.findIndex(n => n.id === editingId);
-      if (idx >= 0) {
-        nota = { ...notas[idx], ...notaData, updatedAt: Date.now() };
-        notas[idx] = nota;
-      } else {
-        nota = { id: uid(), createdAt: Date.now(), ...notaData };
-        notas.push(nota);
-      }
-      toast('Nota atualizada!', 'ok', 3000);
+      // Modo edição: busca nota original para manter createdAt
+      const notasAtual = getNotas();
+      const original = notasAtual.find(n => n.id === editingId) || {};
+      nota = { ...original, ...notaData, id: editingId, updatedAt: Date.now() };
     } else {
-      // Modo criação: nova nota
       nota = { id: uid(), createdAt: Date.now(), ...notaData };
-      notas.push(nota);
     }
+    // Salva no Firestore e no localStorage (backup)
+    dbSaveNota(nota);
+    const notas = getNotas();
+    const idx = notas.findIndex(n => n.id === nota.id);
+    if (idx >= 0) notas[idx] = nota; else notas.push(nota);
     saveNotas(notas);
+    if (editingId) toast('Nota atualizada!', 'ok', 3000);
 
     // Exporta PDF
     const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');

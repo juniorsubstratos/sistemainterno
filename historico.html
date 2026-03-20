@@ -133,6 +133,7 @@
 
   let deletingId = null;
   let viewingNota = null;
+  let allNotas = [];
 
   // ── Render lista ──
   function renderList() {
@@ -140,8 +141,7 @@
     const de  = document.getElementById('filter-de').value;
     const ate = document.getElementById('filter-ate').value;
 
-    const all = [...getNotas()].sort((a,b) => b.createdAt - a.createdAt);
-    const filtered = all.filter(n => {
+    const filtered = [...allNotas].filter(n => {
       const matchQ = !q || n.num.toLowerCase().includes(q) || n.cliente.toLowerCase().includes(q);
       const matchDe  = !de  || (n.data && n.data >= de);
       const matchAte = !ate || (n.data && n.data <= ate);
@@ -202,7 +202,7 @@
 
   // ── Visualizar nota ──
   function openView(id) {
-    const n = getNotas().find(x => x.id === id);
+    const n = allNotas.find(x => x.id === id);
     if (!n) return;
     viewingNota = n;
     document.getElementById('modal-view-title').textContent = `Nota ${n.num}`;
@@ -305,7 +305,7 @@
 
   // ── Confirmar exclusão ──
   function confirmDel(id) {
-    const n = getNotas().find(x => x.id === id);
+    const n = allNotas.find(x => x.id === id);
     if (!n) return;
     deletingId = id;
     document.getElementById('del-num').textContent = n.num;
@@ -316,11 +316,12 @@
   document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
   document.getElementById('modal-del-confirm').addEventListener('click', function() {
     if (!deletingId) return;
-    saveNotas(getNotas().filter(n => n.id !== deletingId));
-    deletingId = null;
-    document.getElementById('modal-del').classList.remove('open');
-    renderList();
-    toast('Nota excluída.', 'info');
+    dbDeleteNota(deletingId).then(() => {
+      deletingId = null;
+      document.getElementById('modal-del').classList.remove('open');
+      toast('Nota excluída.', 'info');
+      loadAndRender();
+    });
   });
 
   // ── Fechar modal view ──
@@ -362,8 +363,13 @@
     renderList();
   });
 
-  // ── Init ──
-  renderList();
+  // ── Carrega notas do Firestore ──
+  async function loadAndRender() {
+    allNotas = await dbGetNotas();
+    renderList();
+  }
+
+  loadAndRender();
 })();
 </script>
 <script>

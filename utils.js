@@ -185,12 +185,9 @@ function maskCpfCnpj(v) {
 
 function maskPhone(v) {
   const d = v.replace(/\D/g,'').slice(0,11);
-  if (d.length === 0) return '';
-  if (d.length <= 2)  return '(' + d;
-  if (d.length <= 6)  return '(' + d.slice(0,2) + ') ' + d.slice(2);
-  if (d.length <= 10) return '(' + d.slice(0,2) + ') ' + d.slice(2,6) + '-' + d.slice(6);
-  // 11 dígitos: (XX) 9 XXXX-XXXX
-  return '(' + d.slice(0,2) + ') ' + d.slice(2,3) + ' ' + d.slice(3,7) + '-' + d.slice(7);
+  if (d.length <= 10)
+    return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2');
+  return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');
 }
 
 function maskCnpj(v) {
@@ -339,4 +336,103 @@ async function exportToPDF(elementId, filename) {
   } finally {
     if (overlay) overlay.classList.add('hidden');
   }
+}
+
+/* ──────────────────────────────────────────────────────────
+   FIRESTORE — funções assíncronas de banco de dados na nuvem
+   Substitui getClientes/saveClientes/getProdutos/etc com nuvem
+────────────────────────────────────────────────────────── */
+
+// Importa Firestore dinamicamente (só quando necessário)
+async function _getDb() {
+  const { db } = await import('./firebase.js');
+  return db;
+}
+async function _fs() {
+  const mod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  return mod;
+}
+
+// ── CLIENTES ──
+async function dbGetClientes() {
+  try {
+    const db = await _getDb();
+    const { collection, getDocs, query, orderBy } = await _fs();
+    const snap = await getDocs(query(collection(db,'clientes'), orderBy('nome')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error('dbGetClientes:', e); return getClientes(); }
+}
+
+async function dbSaveCliente(data) {
+  try {
+    const db = await _getDb();
+    const { doc, setDoc } = await _fs();
+    await setDoc(doc(db,'clientes', data.id), data);
+    return true;
+  } catch(e) { console.error('dbSaveCliente:', e); return false; }
+}
+
+async function dbDeleteCliente(id) {
+  try {
+    const db = await _getDb();
+    const { doc, deleteDoc } = await _fs();
+    await deleteDoc(doc(db,'clientes', id));
+    return true;
+  } catch(e) { console.error('dbDeleteCliente:', e); return false; }
+}
+
+// ── PRODUTOS ──
+async function dbGetProdutos() {
+  try {
+    const db = await _getDb();
+    const { collection, getDocs, query, orderBy } = await _fs();
+    const snap = await getDocs(query(collection(db,'produtos'), orderBy('nome')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error('dbGetProdutos:', e); return getProdutos(); }
+}
+
+async function dbSaveProduto(data) {
+  try {
+    const db = await _getDb();
+    const { doc, setDoc } = await _fs();
+    await setDoc(doc(db,'produtos', data.id), data);
+    return true;
+  } catch(e) { console.error('dbSaveProduto:', e); return false; }
+}
+
+async function dbDeleteProduto(id) {
+  try {
+    const db = await _getDb();
+    const { doc, deleteDoc } = await _fs();
+    await deleteDoc(doc(db,'produtos', id));
+    return true;
+  } catch(e) { console.error('dbDeleteProduto:', e); return false; }
+}
+
+// ── NOTAS ──
+async function dbGetNotas() {
+  try {
+    const db = await _getDb();
+    const { collection, getDocs, query, orderBy } = await _fs();
+    const snap = await getDocs(query(collection(db,'notas'), orderBy('createdAt','desc')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error('dbGetNotas:', e); return getNotas(); }
+}
+
+async function dbSaveNota(data) {
+  try {
+    const db = await _getDb();
+    const { doc, setDoc } = await _fs();
+    await setDoc(doc(db,'notas', data.id), data);
+    return true;
+  } catch(e) { console.error('dbSaveNota:', e); return false; }
+}
+
+async function dbDeleteNota(id) {
+  try {
+    const db = await _getDb();
+    const { doc, deleteDoc } = await _fs();
+    await deleteDoc(doc(db,'notas', id));
+    return true;
+  } catch(e) { console.error('dbDeleteNota:', e); return false; }
 }

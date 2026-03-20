@@ -135,28 +135,31 @@
   document.getElementById('greeting-title').textContent=`${g}, ${name.split(' ')[0]}`;
   document.getElementById('greeting-sub').textContent='Aqui está o resumo das suas operações.';
 
-  const notas=getNotas(), clientes=getClientes(), produtos=getProdutos();
-  const totalVal=notas.reduce((a,n)=>a+(n.total||0),0);
-  document.getElementById('stat-notas').textContent=notas.length;
-  document.getElementById('stat-clientes').textContent=clientes.length;
-  document.getElementById('stat-produtos').textContent=produtos.length;
-  document.getElementById('stat-total').textContent=fmtBRL(totalVal);
-
   const container=document.getElementById('recent-notas');
-  if(notas.length>0){
-    const recentes=[...notas].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
-    const rows=recentes.map(n=>`
-      <tr>
-        <td><span style="font-weight:700;color:var(--moss-700);font-size:13px">${esc(n.num)}</span></td>
-        <td style="font-weight:500">${esc(n.cliente)}</td>
-        <td style="color:var(--ink-faint)">${isoToDisplay(n.data)}</td>
-        <td style="text-align:right;font-weight:700;color:var(--ink-soft)">${fmtBRL(n.total)}</td>
-        <td style="text-align:center"><span class="badge badge-success">${esc(n.status||'Emitida')}</span></td>
-      </tr>`).join('');
-    container.innerHTML=`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Nº Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Total</th><th class="text-center">Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  } else {
-    container.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg></div><p class="empty-state-title">Nenhuma nota ainda</p><p>Crie sua primeira nota de pedido clicando em <strong>Gerar Nova Nota</strong>.</p></div>`;
-  }
+  container.innerHTML='<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+
+  Promise.all([dbGetNotas(), dbGetClientes(), dbGetProdutos()]).then(([notas, clientes, produtos]) => {
+    const totalVal=notas.reduce((a,n)=>a+(n.total||0),0);
+    document.getElementById('stat-notas').textContent=notas.length;
+    document.getElementById('stat-clientes').textContent=clientes.length;
+    document.getElementById('stat-produtos').textContent=produtos.length;
+    document.getElementById('stat-total').textContent=fmtBRL(totalVal);
+
+    if(notas.length>0){
+      const recentes=[...notas].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
+      const rows=recentes.map(n=>`
+        <tr>
+          <td><span style="font-weight:700;color:var(--moss-700);font-size:13px">${esc(n.num)}</span></td>
+          <td style="font-weight:500">${esc(n.cliente)}</td>
+          <td style="color:var(--ink-faint)">${isoToDisplay(n.data)}</td>
+          <td style="text-align:right;font-weight:700;color:var(--ink-soft)">${fmtBRL(n.total)}</td>
+          <td style="text-align:center"><span class="badge badge-success">${esc(n.status||'Emitida')}</span></td>
+        </tr>`).join('');
+      container.innerHTML=`<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Nº Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Total</th><th class="text-center">Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } else {
+      container.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg></div><p class="empty-state-title">Nenhuma nota ainda</p><p>Crie sua primeira nota de pedido clicando em <strong>Gerar Nova Nota</strong>.</p></div>`;
+    }
+  });
 })();
 </script>
 <script>
