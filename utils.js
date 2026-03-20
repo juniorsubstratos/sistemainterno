@@ -263,42 +263,138 @@ async function exportToPDF(elementId, filename) {
     const { jsPDF } = window.jspdf;
     const element = document.getElementById(elementId);
 
-    // Esconde botões de ação
-    const noPrint = element.querySelectorAll('.no-print, .col-del');
-    noPrint.forEach(el => el.style.setProperty('display','none','important'));
-
-    await new Promise(r => requestAnimationFrame(r));
-
     const canvas = await html2canvas(element, {
-      scale: 2, useCORS: true, backgroundColor: '#fff', logging: false,
-      onclone: doc => {
-        doc.querySelectorAll('.no-print, .col-del').forEach(el => el.style.display = 'none');
+      scale: 2.5,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      onclone: function(doc) {
+        const el = doc.getElementById(elementId);
+        if (!el) return;
+
+        // Esconde elementos que não devem aparecer
+        el.querySelectorAll('.no-print, .col-del, .btn-add-row, #btn-buscar-cli, .sec-action').forEach(function(e) {
+          e.style.display = 'none';
+        });
+
+        // Remove bordas e backgrounds de todos os inputs — exibe só o valor
+        el.querySelectorAll('input, textarea, select').forEach(function(inp) {
+          inp.style.border            = 'none';
+          inp.style.background        = 'transparent';
+          inp.style.boxShadow         = 'none';
+          inp.style.outline           = 'none';
+          inp.style.padding           = '2px 0';
+          inp.style.fontFamily        = 'DM Sans, sans-serif';
+          inp.style.fontSize          = '13px';
+          inp.style.color             = '#2e3630';
+          inp.style.fontWeight        = '500';
+          inp.style.webkitAppearance  = 'none';
+          inp.style.MozAppearance     = 'none';
+        });
+
+        // Remove bordas dos table-input
+        el.querySelectorAll('.table-input').forEach(function(inp) {
+          inp.style.border     = 'none';
+          inp.style.background = 'transparent';
+          inp.style.boxShadow  = 'none';
+          inp.style.padding    = '0';
+        });
+
+        // Limpa bordas dos field-input (inclusive com erro)
+        el.querySelectorAll('.field-input').forEach(function(inp) {
+          inp.style.border     = 'none';
+          inp.style.boxShadow  = 'none';
+          inp.style.background = 'transparent';
+          inp.style.padding    = '2px 0';
+        });
+
+        // Fundo branco, sem sombra no container
+        el.style.background   = '#ffffff';
+        el.style.borderRadius = '0';
+        el.style.boxShadow    = 'none';
+
+        // Preserva cabeçalho verde da nota
+        var header = el.querySelector('.nota-doc-header');
+        if (header) {
+          header.style.background = 'linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%)';
+          header.style.webkitPrintColorAdjust = 'exact';
+          header.style.printColorAdjust = 'exact';
+        }
+
+        // Preserva header verde da tabela de itens
+        el.querySelectorAll('.items-table thead th').forEach(function(th) {
+          th.style.background = '#234d38';
+          th.style.color      = '#ffffff';
+          th.style.webkitPrintColorAdjust = 'exact';
+          th.style.printColorAdjust = 'exact';
+        });
+
+        // Preserva footer verde
+        var footer = el.querySelector('.nota-footer');
+        if (footer) {
+          footer.style.background = '#1c3a2b';
+          footer.style.webkitPrintColorAdjust = 'exact';
+          footer.style.printColorAdjust = 'exact';
+        }
+
+        // Remove sombras dos cards
+        el.querySelectorAll('.card, .nota-section').forEach(function(card) {
+          card.style.boxShadow = 'none';
+        });
+
+        // Totais box — fundo suave
+        el.querySelectorAll('.totais-box').forEach(function(b) {
+          b.style.background = '#f5f0e8';
+          b.style.border     = '1px solid #e8dfd0';
+        });
+
+        // Input de desconto
+        var discInput = el.querySelector('.disc-input');
+        if (discInput) {
+          discInput.style.border     = 'none';
+          discInput.style.background = 'transparent';
+          discInput.style.boxShadow  = 'none';
+        }
       }
     });
 
-    noPrint.forEach(el => el.style.removeProperty('display'));
+    const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+    const margin  = 6;
+    const imgW    = 210 - (margin * 2);
+    const imgH    = (canvas.height / canvas.width) * imgW;
+    const imgData = canvas.toDataURL('image/jpeg', 0.96);
+    const pageH   = 297 - (margin * 2);
 
-    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4', compress:true });
-    const imgW = 210 - 16; // A4 width minus margins
-    const imgH = (canvas.height / canvas.width) * imgW;
-    const imgData = canvas.toDataURL('image/jpeg', 0.93);
-
-    if (imgH <= 297 - 16) {
-      pdf.addImage(imgData, 'JPEG', 8, 8, imgW, imgH);
+    if (imgH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH);
     } else {
-      let y = 0, pageH = 297 - 16;
-      while (y < imgH) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 8, 8 - y, imgW, imgH);
-        y += pageH;
+      // Multi-página com corte correto
+      var remaining = imgH;
+      var srcY      = 0;
+      var page      = 0;
+      var ratio     = canvas.width / imgW;
+
+      while (remaining > 0) {
+        if (page > 0) pdf.addPage();
+        var sliceH   = Math.min(pageH, remaining);
+        var srcH_px  = sliceH * ratio;
+        var sliceCanvas       = document.createElement('canvas');
+        sliceCanvas.width     = canvas.width;
+        sliceCanvas.height    = Math.ceil(srcH_px);
+        var ctx = sliceCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, srcY * ratio, canvas.width, srcH_px, 0, 0, canvas.width, srcH_px);
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.96), 'JPEG', margin, margin, imgW, sliceH);
+        srcY      += sliceH;
+        remaining -= sliceH;
+        page++;
       }
     }
 
     pdf.save(filename || 'nota-pedido.pdf');
-    toast('PDF salvo com sucesso!', 'ok');
+    toast('PDF gerado com sucesso!', 'ok');
   } catch (e) {
-    console.error(e);
-    toast('Erro ao gerar PDF. Tente imprimir pelo navegador.', 'err', 5000);
+    console.error('Erro PDF:', e);
+    toast('Erro ao gerar PDF. Tente usar o botão Imprimir.', 'err', 5000);
   } finally {
     if (overlay) overlay.classList.add('hidden');
   }
