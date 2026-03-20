@@ -91,31 +91,31 @@
           <div id="recent-notas"></div>
         </div>
 
-        <!-- Ações rápidas -->
+        <!-- Relatórios -->
         <div class="card anim d2">
-          <div class="card-header"><span class="card-title">Acesso rápido</span></div>
+          <div class="card-header"><span class="card-title">Relatórios de Faturamento</span></div>
           <div class="card-body" style="padding:14px">
             <div class="quick-actions">
-              <a href="nota.html" class="quick-action-item">
-                <div class="qa-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V6l-4-4z"/><path d="M12 2v4h4"/></svg></div>
-                <div class="qa-text"><div class="qa-name">Gerar Nota</div><div class="qa-desc">Emitir nota de pedido</div></div>
+              <div class="quick-action-item" id="rel-7d" style="cursor:pointer">
+                <div class="qa-icon" style="background:var(--moss-100)"><svg viewBox="0 0 20 20" fill="none" stroke="var(--moss-700)" stroke-width="1.7"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M2 7h16M6 3v4M14 3v4"/></svg></div>
+                <div class="qa-text"><div class="qa-name">Últimos 7 dias</div><div class="qa-desc" id="val-7d">Carregando...</div></div>
                 <div class="qa-arrow"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6"/></svg></div>
-              </a>
-              <a href="clientes.html" class="quick-action-item">
-                <div class="qa-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8" cy="6" r="3"/><path d="M2 18c0-3.3 2.7-6 6-6"/><path d="M14 14l2 2 4-4"/></svg></div>
-                <div class="qa-text"><div class="qa-name">Clientes</div><div class="qa-desc">Cadastrar ou buscar</div></div>
+              </div>
+              <div class="quick-action-item" id="rel-30d" style="cursor:pointer">
+                <div class="qa-icon" style="background:var(--moss-100)"><svg viewBox="0 0 20 20" fill="none" stroke="var(--moss-700)" stroke-width="1.7"><path d="M2 9l2-2 3 3 4-5 3 3 2-2"/><path d="M2 16h16"/></svg></div>
+                <div class="qa-text"><div class="qa-name">Últimos 30 dias</div><div class="qa-desc" id="val-30d">Carregando...</div></div>
                 <div class="qa-arrow"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6"/></svg></div>
-              </a>
-              <a href="produtos.html" class="quick-action-item">
-                <div class="qa-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 7l8-5 8 5v6l-8 5-8-5V7z"/></svg></div>
-                <div class="qa-text"><div class="qa-name">Produtos</div><div class="qa-desc">Catálogo de produtos</div></div>
+              </div>
+              <div class="quick-action-item" id="rel-mes" style="cursor:pointer">
+                <div class="qa-icon" style="background:var(--earth-100,#f5ede0)"><svg viewBox="0 0 20 20" fill="none" stroke="var(--earth-600,#b07040)" stroke-width="1.7"><path d="M10 2v16M2 10h16"/><circle cx="10" cy="10" r="8"/></svg></div>
+                <div class="qa-text"><div class="qa-name">Mês atual</div><div class="qa-desc" id="val-mes">Carregando...</div></div>
                 <div class="qa-arrow"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6"/></svg></div>
-              </a>
-              <a href="historico.html" class="quick-action-item">
-                <div class="qa-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 3"/></svg></div>
-                <div class="qa-text"><div class="qa-name">Histórico</div><div class="qa-desc">Notas anteriores</div></div>
+              </div>
+              <div class="quick-action-item" id="rel-ano" style="cursor:pointer">
+                <div class="qa-icon" style="background:var(--moss-100)"><svg viewBox="0 0 20 20" fill="none" stroke="var(--moss-700)" stroke-width="1.7"><path d="M2 16l4-8 3 5 3-3 4 6"/></svg></div>
+                <div class="qa-text"><div class="qa-name">Ano atual</div><div class="qa-desc" id="val-ano">Carregando...</div></div>
                 <div class="qa-arrow"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4l6 6-6 6"/></svg></div>
-              </a>
+              </div>
             </div>
           </div>
         </div>
@@ -124,66 +124,158 @@
   </div>
 </div>
 
+<!-- Modal Relatório -->
+<div class="modal-overlay" id="modal-rel">
+  <div class="modal" style="max-width:580px;width:95%">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-rel-titulo">Relatório</span>
+      <button class="modal-close" id="modal-rel-close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5L5 15M5 5l10 10"/></svg></button>
+    </div>
+    <div class="modal-body" id="modal-rel-body" style="padding:20px"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="modal-rel-fechar">Fechar</button>
+      <button class="btn btn-primary" id="modal-rel-print">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><path d="M6 9V2h8v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h12a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h8v6H6v-6z"/></svg>
+        Imprimir
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 (function(){
   startClock('clock'); initSidebar();
-  const h=new Date().getHours();
-  const g=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
-  const user=getLoggedUser();
-  const name=user?(user.name||user.email.split('@')[0]):'Usuário';
-  document.getElementById('greeting-title').textContent=`${g}, ${name.split(' ')[0]}`;
+  var h=new Date().getHours();
+  var g=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  var user=getLoggedUser();
+  var name=user?(user.name||user.email.split('@')[0]):'Usuário';
+  document.getElementById('greeting-title').textContent=g+', '+name.split(' ')[0];
   document.getElementById('greeting-sub').textContent='Aqui está o resumo das suas operações.';
 
-  // Limpa dados antigos do localStorage
+  // Limpa localStorage antigo
   localStorage.removeItem('js_notas');
   localStorage.removeItem('js_clientes');
   localStorage.removeItem('js_produtos');
 
-  const container = document.getElementById('recent-notas');
-  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+  var container=document.getElementById('recent-notas');
+  container.innerHTML='<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+  ['val-7d','val-30d','val-mes','val-ano'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.textContent='Carregando...';
+  });
 
-  var loadNotas    = typeof dbGetNotas    === 'function' ? dbGetNotas()    : Promise.resolve([]);
-  var loadClientes = typeof dbGetClientes === 'function' ? dbGetClientes() : Promise.resolve([]);
-  var loadProdutos = typeof dbGetProdutos === 'function' ? dbGetProdutos() : Promise.resolve([]);
+  var loadN = typeof dbGetNotas    === 'function' ? dbGetNotas()    : Promise.resolve([]);
+  var loadC = typeof dbGetClientes === 'function' ? dbGetClientes() : Promise.resolve([]);
+  var loadP = typeof dbGetProdutos === 'function' ? dbGetProdutos() : Promise.resolve([]);
 
-  Promise.all([loadNotas, loadClientes, loadProdutos]).then(function(res) {
-    var notas    = res[0] || [];
-    var clientes = res[1] || [];
-    var produtos = res[2] || [];
-    var totalVal = notas.reduce(function(a,n){ return a+(n.total||0); }, 0);
+  Promise.all([loadN, loadC, loadP]).then(function(res){
+    var notas=res[0]||[], clientes=res[1]||[], produtos=res[2]||[];
+    var totalVal=notas.reduce(function(a,n){return a+(n.total||0);},0);
 
-    document.getElementById('stat-notas').textContent    = notas.length;
-    document.getElementById('stat-clientes').textContent = clientes.length;
-    document.getElementById('stat-produtos').textContent = produtos.length;
-    document.getElementById('stat-total').textContent    = fmtBRL(totalVal);
+    document.getElementById('stat-notas').textContent=notas.length;
+    document.getElementById('stat-clientes').textContent=clientes.length;
+    document.getElementById('stat-produtos').textContent=produtos.length;
+    document.getElementById('stat-total').textContent=fmtBRL(totalVal);
 
-    if (notas.length > 0) {
-      var recentes = [...notas].sort(function(a,b){ return b.createdAt-a.createdAt; }).slice(0,5);
-      var rows = recentes.map(function(n) {
-        return '<tr>' +
-          '<td><span style="font-weight:700;color:var(--moss-700);font-size:13px">' + esc(n.num) + '</span></td>' +
-          '<td style="font-weight:500">' + esc(n.cliente) + '</td>' +
-          '<td style="color:var(--ink-faint)">' + isoToDisplay(n.data) + '</td>' +
-          '<td style="text-align:right;font-weight:700;color:var(--ink-soft)">' + fmtBRL(n.total) + '</td>' +
-          '<td style="text-align:center"><span class="badge badge-success">' + esc(n.status||'Emitida') + '</span></td>' +
+    // Últimas notas
+    if(notas.length>0){
+      var rec=[...notas].sort(function(a,b){return b.createdAt-a.createdAt;}).slice(0,5);
+      var rows=rec.map(function(n){
+        return '<tr>'+
+          '<td><span style="font-weight:700;color:var(--moss-700);font-size:13px">'+esc(n.num)+'</span></td>'+
+          '<td style="font-weight:500">'+esc(n.cliente)+'</td>'+
+          '<td style="color:var(--ink-faint)">'+isoToDisplay(n.data)+'</td>'+
+          '<td style="text-align:right;font-weight:700;color:var(--ink-soft)">'+fmtBRL(n.total)+'</td>'+
+          '<td style="text-align:center"><span class="badge badge-success">'+esc(n.status||'Emitida')+'</span></td>'+
           '</tr>';
       }).join('');
-      container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
-        '<th>Nº Pedido</th><th>Cliente</th><th>Data</th>' +
-        '<th class="text-right">Total</th><th class="text-center">Status</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      container.innerHTML='<div style="overflow-x:auto"><table class="data-table"><thead><tr>'+
+        '<th>Nº Pedido</th><th>Cliente</th><th>Data</th>'+
+        '<th class="text-right">Total</th><th class="text-center">Status</th>'+
+        '</tr></thead><tbody>'+rows+'</tbody></table></div>';
     } else {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">' +
-        '<path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>' +
-        '</svg></div><p class="empty-state-title">Nenhuma nota ainda</p>' +
+      container.innerHTML='<div class="empty-state"><div class="empty-state-icon">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">'+
+        '<path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg></div>'+
+        '<p class="empty-state-title">Nenhuma nota ainda</p>'+
         '<p>Crie sua primeira nota clicando em <strong>Gerar Nova Nota</strong>.</p></div>';
     }
-  }).catch(function(err) {
+
+    // Calcula relatórios
+    var hoje=new Date(), anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth();
+    var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    function calcRel(titulo, filtro){
+      var ns=notas.filter(filtro);
+      return {titulo:titulo, total:ns.reduce(function(a,n){return a+(n.total||0);},0), count:ns.length, notas:ns};
+    }
+    var rels = {
+      r7:  calcRel('Faturamento — Últimos 7 dias',  function(n){if(!n.data)return false; var d=new Date(n.data+'T12:00:00'); return (hoje-d)<=7*864e5;}),
+      r30: calcRel('Faturamento — Últimos 30 dias', function(n){if(!n.data)return false; var d=new Date(n.data+'T12:00:00'); return (hoje-d)<=30*864e5;}),
+      rMes:calcRel('Faturamento — '+meses[mesAtual]+'/'+anoAtual, function(n){if(!n.data)return false; var d=new Date(n.data+'T12:00:00'); return d.getFullYear()===anoAtual&&d.getMonth()===mesAtual;}),
+      rAno:calcRel('Faturamento — Ano '+anoAtual,   function(n){if(!n.data)return false; var d=new Date(n.data+'T12:00:00'); return d.getFullYear()===anoAtual;})
+    };
+
+    document.getElementById('val-7d').textContent  = rels.r7.count  +' nota(s) · '+fmtBRL(rels.r7.total);
+    document.getElementById('val-30d').textContent = rels.r30.count +' nota(s) · '+fmtBRL(rels.r30.total);
+    document.getElementById('val-mes').textContent = meses[mesAtual]+'/'+anoAtual+' · '+fmtBRL(rels.rMes.total);
+    document.getElementById('val-ano').textContent = anoAtual+' · '+fmtBRL(rels.rAno.total);
+
+    function abrirRel(rel){
+      document.getElementById('modal-rel-titulo').textContent = rel.titulo;
+      var ns=[...rel.notas].sort(function(a,b){return b.createdAt-a.createdAt;});
+      var rows2 = ns.length>0 ? ns.map(function(n){
+        return '<tr><td style="font-weight:700;color:var(--moss-700)">'+esc(n.num)+'</td>'+
+          '<td>'+esc(n.cliente)+'</td>'+
+          '<td style="color:var(--ink-faint)">'+isoToDisplay(n.data)+'</td>'+
+          '<td style="text-align:right;font-weight:700">'+fmtBRL(n.total)+'</td></tr>';
+      }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:24px">Nenhuma nota no período.</td></tr>';
+
+      document.getElementById('modal-rel-body').innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'+
+          '<div style="background:var(--moss-50);border:1px solid var(--moss-200);border-radius:10px;padding:14px 16px">'+
+            '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--moss-600);margin-bottom:4px">Total Faturado</div>'+
+            '<div style="font-size:22px;font-weight:800;color:var(--moss-700)">'+fmtBRL(rel.total)+'</div>'+
+          '</div>'+
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px">'+
+            '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:4px">Notas Emitidas</div>'+
+            '<div style="font-size:22px;font-weight:800;color:var(--ink)">'+rel.count+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="overflow-x:auto"><table class="data-table">'+
+          '<thead><tr><th>Nº Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Total</th></tr></thead>'+
+          '<tbody>'+rows2+'</tbody></table></div>';
+      document.getElementById('modal-rel').classList.add('open');
+    }
+
+    document.getElementById('rel-7d').addEventListener('click',  function(){abrirRel(rels.r7);});
+    document.getElementById('rel-30d').addEventListener('click', function(){abrirRel(rels.r30);});
+    document.getElementById('rel-mes').addEventListener('click', function(){abrirRel(rels.rMes);});
+    document.getElementById('rel-ano').addEventListener('click', function(){abrirRel(rels.rAno);});
+
+    document.getElementById('modal-rel-print').addEventListener('click', function(){
+      var titulo=document.getElementById('modal-rel-titulo').textContent;
+      var corpo=document.getElementById('modal-rel-body').innerHTML;
+      var win=window.open('','_blank');
+      win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titulo+'</title>'+
+        '<style>body{font-family:Arial,sans-serif;padding:24px;color:#222}h1{font-size:18px;margin-bottom:16px;color:#235d47}'+
+        'table{width:100%;border-collapse:collapse}th{background:#235d47;color:#fff;padding:8px;font-size:11px;text-align:left}'+
+        'td{padding:8px;border-bottom:1px solid #eee;font-size:12px}.text-right{text-align:right}</style></head>'+
+        '<body><h1>'+titulo+'</h1>'+corpo+
+        '<scr'+'ipt>window.onload=function(){window.print();};<\/scr'+'ipt></body></html>');
+      win.document.close();
+    });
+
+  }).catch(function(err){
     console.error('Dashboard:', err);
-    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Erro ao carregar. Tente recarregar a página.</div>';
+    container.innerHTML='<div style="padding:24px;text-align:center;color:var(--danger)">Erro ao carregar dados.</div>';
+    ['val-7d','val-30d','val-mes','val-ano'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.textContent='Erro';
+    });
   });
+
+  document.getElementById('modal-rel-close').addEventListener('click',  function(){document.getElementById('modal-rel').classList.remove('open');});
+  document.getElementById('modal-rel-fechar').addEventListener('click', function(){document.getElementById('modal-rel').classList.remove('open');});
 })();
 </script>
 <script>
