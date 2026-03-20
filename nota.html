@@ -5,160 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gerar Nota de Pedido — Junior Substratos</title>
   <link rel="stylesheet" href="style.css" />
-  
-  <style id="print-style">
-    @media print {
-      /* Esconde tudo exceto a nota */
-      body > *:not(.admin-layout) { display: none !important; }
-      .sidebar, .topbar, .page-header,
-      .no-print, .col-del, .btn-add-row,
-      #btn-buscar-cli, .sec-action,
-      .pdf-overlay { display: none !important; }
-
-      body { background: #fff !important; margin: 0; }
-      body::before { display: none !important; }
-      .admin-content { margin-left: 0 !important; }
-      .page-content  { padding: 0 !important; }
-
-      /* Nota sem sombra */
-      #nota-doc {
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
-        width: 100% !important;
-      }
-
-      /* Esconde input de data — usa o span disp-data que já tem formato DD/MM/AAAA */
-      #data-pedido { display: none !important; }
-      #data-pedido-display { display: block !important; }
-
-      /* CAMPOS: mostra só o valor, sem borda nem background */
-      #nota-doc input,
-      #nota-doc textarea,
-      #nota-doc select {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        outline: none !important;
-        -webkit-appearance: none !important;
-        appearance: none !important;
-        color: #2e3630 !important;
-        font-size: 12pt !important;
-        padding: 0 !important;
-        width: 100% !important;
-        overflow: visible !important;
-        white-space: normal !important;
-        height: auto !important;
-        min-height: 0 !important;
-      }
-
-      .table-input {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        overflow: visible !important;
-      }
-
-      .disc-input {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        text-align: right;
-      }
-
-      /* Cabeçalho verde */
-      .nota-doc-header {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%) !important;
-        color: #fff !important;
-      }
-      .nota-doc-header * { color: #fff !important; }
-      .nota-badge {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: rgba(255,255,255,.14) !important;
-        border: 1px solid rgba(255,255,255,.3) !important;
-        color: #fff !important;
-      }
-
-      /* Tabela de itens — cabeçalho verde */
-      .items-table thead tr {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: #234d38 !important;
-      }
-      .items-table thead th {
-        background: #234d38 !important;
-        color: #fff !important;
-      }
-
-      /* Seções */
-      .sec-header {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: #f5f0e8 !important;
-      }
-      .sec-icon {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: #e8f2ec !important;
-      }
-
-      /* Totais */
-      .totais-box {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: #f5f0e8 !important;
-        border: 1px solid #e8dfd0 !important;
-      }
-      .tot-final .tot-val { color: #2d6347 !important; }
-      .item-total         { color: #2d6347 !important; }
-      .tot-neg            { color: #b5422a !important; }
-
-      /* Footer verde */
-      .nota-footer {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background: #1c3a2b !important;
-        color: rgba(255,255,255,.55) !important;
-      }
-      .nota-footer * { color: rgba(255,255,255,.55) !important; }
-
-      /* Paginação A4 */
-
-      /* Garante que nota-doc e cabeçalho não sejam cortados */
-      #nota-doc {
-        overflow: visible !important;
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-      .nota-doc-header {
-        overflow: visible !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      .nota-empresa {
-        display: flex !important;
-        align-items: center !important;
-        gap: 14px !important;
-      }
-      /* Logo no cabeçalho */
-      .nota-logo-inline,
-      .nota-doc-header img,
-      .nota-doc-header svg {
-        display: block !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      @page {
-        size: A4 portrait;
-        margin: 10mm 12mm;
-      }
-    }
-  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <script src="utils.js"></script>
@@ -249,7 +97,6 @@
               <div class="field">
                 <label class="field-label" for="data-pedido">Data</label>
                 <input class="field-input" type="date" id="data-pedido" />
-                <span id="data-pedido-display" style="display:none;font-size:13px;color:#2e3630;font-weight:500"></span>
               </div>
             </div>
             <div class="field">
@@ -468,8 +315,6 @@
   // ── Data automática ──
   const dataEl = document.getElementById('data-pedido');
   dataEl.value = todayISO();
-  const ddDisplay = document.getElementById('data-pedido-display');
-  if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
   document.getElementById('nota-footer-date').textContent = todayDisplay();
 
   // Número sugerido
@@ -481,8 +326,6 @@
   function syncMeta() {
     document.getElementById('disp-num').textContent = document.getElementById('num-pedido').value || '—';
     document.getElementById('disp-data').textContent = isoToDisplay(dataEl.value);
-    const ddDisplay = document.getElementById('data-pedido-display');
-    if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
     const resp = document.getElementById('responsavel').value;
     document.getElementById('disp-resp').textContent = resp || '—';
     document.getElementById('sig-resp').textContent = resp || '—';
@@ -750,13 +593,20 @@
 
     // Exporta PDF
     const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
-    printNota();
+    try {
+      await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
+    } catch(pdfErr) {
+      console.error('PDF error:', pdfErr);
+      toast('Erro ao gerar PDF: ' + pdfErr.message, 'err', 8000);
+    }
   });
 
   // ── Imprimir ──
   document.getElementById('btn-print').addEventListener('click', function() {
     if (!validate()) return;
-    printNota();
+    syncMeta();
+    document.getElementById('nota-footer-date').textContent = todayDisplay();
+    window.print();
   });
 
   // ── Limpar ──
@@ -766,8 +616,6 @@
     document.getElementById('emp-razao').value = 'Junior Substratos';
     document.getElementById('num-pedido').value = `PED-${yr}-${String(Math.floor(Math.random()*900+100))}`;
     dataEl.value = todayISO();
-  const ddDisplay = document.getElementById('data-pedido-display');
-  if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
     document.getElementById('disc-pct').value = '';
     items = [];
     itemIdCnt = 1;
@@ -776,15 +624,6 @@
     syncMeta();
     toast('Formulário limpo.','info',2000);
   });
-
-
-  // ── Gerar PDF via impressão nativa ──
-  function printNota() {
-    // Sincroniza displays antes de imprimir
-    syncMeta();
-    document.getElementById('nota-footer-date').textContent = todayDisplay();
-    window.print();
-  }
 
   // Ctrl+Enter adiciona item
   document.addEventListener('keydown', e => {

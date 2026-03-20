@@ -285,12 +285,30 @@ async function exportToPDF(elementId, filename) {
 
     wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;top:-99999px;left:0;width:900px;min-width:900px;background:#fff;z-index:-1;padding:0;margin:0;box-sizing:border-box';
+    // Converte imagens externas (SVG/img) para base64 para evitar CORS
+    const imgs = clone.querySelectorAll('img');
+    await Promise.all([...imgs].map(img => new Promise(res => {
+      const canvas2 = document.createElement('canvas');
+      const ctx = canvas2.getContext('2d');
+      const i = new Image();
+      i.crossOrigin = 'anonymous';
+      i.onload = () => {
+        canvas2.width = i.naturalWidth || 100;
+        canvas2.height = i.naturalHeight || 100;
+        ctx.drawImage(i, 0, 0);
+        try { img.src = canvas2.toDataURL('image/png'); } catch(e) { img.src = ''; }
+        res();
+      };
+      i.onerror = () => { img.style.display = 'none'; res(); };
+      i.src = img.src;
+    })));
+
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
-    // Aguarda renderização
+    // Aguarda renderização completa
     await new Promise(r => requestAnimationFrame(r));
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 600));
 
     const canvas = await html2canvas(wrapper, {
       scale: 2,
