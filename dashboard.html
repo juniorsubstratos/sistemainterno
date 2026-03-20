@@ -135,33 +135,31 @@
   document.getElementById('greeting-title').textContent=`${g}, ${name.split(' ')[0]}`;
   document.getElementById('greeting-sub').textContent='Aqui está o resumo das suas operações.';
 
-  // Limpa localStorage antigo (dados de teste)
+  // Limpa dados antigos do localStorage
   localStorage.removeItem('js_notas');
   localStorage.removeItem('js_clientes');
   localStorage.removeItem('js_produtos');
 
   const container = document.getElementById('recent-notas');
-  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Carregando dados...</div>';
+  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
 
-  // Carrega tudo do Firestore
-  var loadFns = [];
-  if (typeof dbGetNotas === 'function') loadFns.push(dbGetNotas()); else loadFns.push(Promise.resolve([]));
-  if (typeof dbGetClientes === 'function') loadFns.push(dbGetClientes()); else loadFns.push(Promise.resolve([]));
-  if (typeof dbGetProdutos === 'function') loadFns.push(dbGetProdutos()); else loadFns.push(Promise.resolve([]));
+  var loadNotas    = typeof dbGetNotas    === 'function' ? dbGetNotas()    : Promise.resolve([]);
+  var loadClientes = typeof dbGetClientes === 'function' ? dbGetClientes() : Promise.resolve([]);
+  var loadProdutos = typeof dbGetProdutos === 'function' ? dbGetProdutos() : Promise.resolve([]);
 
-  Promise.all(loadFns).then(function(results) {
-    var notas = results[0] || [];
-    var clientes = results[1] || [];
-    var produtos = results[2] || [];
-
+  Promise.all([loadNotas, loadClientes, loadProdutos]).then(function(res) {
+    var notas    = res[0] || [];
+    var clientes = res[1] || [];
+    var produtos = res[2] || [];
     var totalVal = notas.reduce(function(a,n){ return a+(n.total||0); }, 0);
-    document.getElementById('stat-notas').textContent = notas.length;
+
+    document.getElementById('stat-notas').textContent    = notas.length;
     document.getElementById('stat-clientes').textContent = clientes.length;
     document.getElementById('stat-produtos').textContent = produtos.length;
-    document.getElementById('stat-total').textContent = fmtBRL(totalVal);
+    document.getElementById('stat-total').textContent    = fmtBRL(totalVal);
 
     if (notas.length > 0) {
-      var recentes = [...notas].sort(function(a,b){ return b.createdAt - a.createdAt; }).slice(0,5);
+      var recentes = [...notas].sort(function(a,b){ return b.createdAt-a.createdAt; }).slice(0,5);
       var rows = recentes.map(function(n) {
         return '<tr>' +
           '<td><span style="font-weight:700;color:var(--moss-700);font-size:13px">' + esc(n.num) + '</span></td>' +
@@ -171,13 +169,20 @@
           '<td style="text-align:center"><span class="badge badge-success">' + esc(n.status||'Emitida') + '</span></td>' +
           '</tr>';
       }).join('');
-      container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Nº Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Total</th><th class="text-center">Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      container.innerHTML = '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
+        '<th>Nº Pedido</th><th>Cliente</th><th>Data</th>' +
+        '<th class="text-right">Total</th><th class="text-center">Status</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     } else {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg></div><p class="empty-state-title">Nenhuma nota ainda</p><p>Crie sua primeira nota de pedido clicando em <strong>Gerar Nova Nota</strong>.</p></div>';
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">' +
+        '<path d="M9 12h6M9 16h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/>' +
+        '</svg></div><p class="empty-state-title">Nenhuma nota ainda</p>' +
+        '<p>Crie sua primeira nota clicando em <strong>Gerar Nova Nota</strong>.</p></div>';
     }
   }).catch(function(err) {
-    console.error('Dashboard load error:', err);
-    container.innerHTML = '<div class="empty-state"><p style="color:var(--danger)">Erro ao carregar dados. Verifique a conexão.</p></div>';
+    console.error('Dashboard:', err);
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Erro ao carregar. Tente recarregar a página.</div>';
   });
 })();
 </script>

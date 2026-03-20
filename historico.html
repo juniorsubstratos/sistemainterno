@@ -82,10 +82,6 @@
     <div class="modal-head">
       <span class="modal-title" id="modal-view-title">Nota de Pedido</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-ghost btn-sm no-print" id="btn-modal-edit">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/><path d="M14 2l4 4"/></svg>
-          Editar
-        </button>
         <button class="btn btn-secondary btn-sm no-print" id="btn-modal-print">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h8v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h12a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h8v6H6v-6z"/></svg>
           Imprimir
@@ -137,6 +133,7 @@
 
   let deletingId = null;
   let viewingNota = null;
+  let allNotas = [];
 
   // ── Render lista ──
   function renderList() {
@@ -144,8 +141,7 @@
     const de  = document.getElementById('filter-de').value;
     const ate = document.getElementById('filter-ate').value;
 
-    const all = [...getNotas()].sort((a,b) => b.createdAt - a.createdAt);
-    const filtered = all.filter(n => {
+    const filtered = [...allNotas].sort((a,b) => b.createdAt - a.createdAt).filter(n => {
       const matchQ = !q || n.num.toLowerCase().includes(q) || n.cliente.toLowerCase().includes(q);
       const matchDe  = !de  || (n.data && n.data >= de);
       const matchAte = !ate || (n.data && n.data <= ate);
@@ -182,10 +178,6 @@
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="10" r="3"/></svg>
             Visualizar
           </button>
-          <button class="btn btn-ghost btn-sm" data-edit="${esc(n.id)}" style="margin-right:4px">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/><path d="M14 2l4 4"/></svg>
-            Editar
-          </button>
           <button class="btn btn-sm" style="background:#fdf0ee;color:var(--danger);border:1.5px solid #f5b7b1" data-del="${esc(n.id)}">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h14M8 6V4h4v2M19 6l-1 12a2 2 0 01-2 2H4a2 2 0 01-2-2L1 6"/></svg>
           </button>
@@ -205,15 +197,12 @@
       </div>`;
 
     container.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => openView(btn.dataset.view)));
-    container.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
-      window.location.href = 'nota.html?edit=' + btn.dataset.edit;
-    }));
     container.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => confirmDel(btn.dataset.del)));
   }
 
   // ── Visualizar nota ──
   function openView(id) {
-    const n = getNotas().find(x => x.id === id);
+    const n = allNotas.find(x => x.id === id);
     if (!n) return;
     viewingNota = n;
     document.getElementById('modal-view-title').textContent = `Nota ${n.num}`;
@@ -316,7 +305,7 @@
 
   // ── Confirmar exclusão ──
   function confirmDel(id) {
-    const n = getNotas().find(x => x.id === id);
+    const n = allNotas.find(x => x.id === id);
     if (!n) return;
     deletingId = id;
     document.getElementById('del-num').textContent = n.num;
@@ -327,16 +316,15 @@
   document.getElementById('modal-del-cancel').addEventListener('click', () => document.getElementById('modal-del').classList.remove('open'));
   document.getElementById('modal-del-confirm').addEventListener('click', function() {
     if (!deletingId) return;
-    saveNotas(getNotas().filter(n => n.id !== deletingId));
+    var idToDelete = deletingId;
     deletingId = null;
     document.getElementById('modal-del').classList.remove('open');
+    // Remove localmente imediatamente
+    allNotas = allNotas.filter(function(n){ return n.id !== idToDelete; });
     renderList();
     toast('Nota excluída.', 'info');
-  });
-
-  document.getElementById('btn-modal-edit').addEventListener('click', function() {
-    if (!viewingNota) return;
-    window.location.href = 'nota.html?edit=' + viewingNota.id;
+    // Remove do Firestore
+    if (typeof dbDeleteNota === 'function') dbDeleteNota(idToDelete);
   });
 
   // ── Fechar modal view ──
@@ -378,8 +366,19 @@
     renderList();
   });
 
-  // ── Init ──
-  renderList();
+  // Limpa localStorage antigo
+  localStorage.removeItem('js_notas');
+
+  // ── Carrega do Firestore ──
+  document.getElementById('hist-list').innerHTML = '<div style="padding:32px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
+  var loadFn = typeof dbGetNotas === 'function' ? dbGetNotas() : Promise.resolve([]);
+  loadFn.then(function(notas) {
+    allNotas = notas || [];
+    renderList();
+  }).catch(function(err) {
+    console.error('Historico:', err);
+    document.getElementById('hist-list').innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Erro ao carregar notas.</div>';
+  });
 })();
 </script>
 <script>
