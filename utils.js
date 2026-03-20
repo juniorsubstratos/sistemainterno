@@ -259,70 +259,48 @@ async function exportToPDF(elementId, filename) {
   const overlay = document.getElementById('pdf-overlay');
   if (overlay) overlay.classList.remove('hidden');
 
-  let wrapper = null;
-
   try {
     const { jsPDF } = window.jspdf;
     const element = document.getElementById(elementId);
 
-    // Clona o elemento em container isolado com largura fixa de desktop
-    const clone = element.cloneNode(true);
-    clone.querySelectorAll('.no-print, .col-del').forEach(el => el.remove());
-
-    // Força layout de 2 colunas independente do tamanho de tela
-    clone.querySelectorAll('.nota-2col').forEach(el => {
-      el.style.cssText += ';display:grid!important;grid-template-columns:1fr 1fr!important;';
-    });
-    clone.querySelectorAll('.sig-grid').forEach(el => {
-      el.style.cssText += ';display:grid!important;grid-template-columns:repeat(2,1fr)!important;flex-direction:row!important;';
-    });
-    clone.querySelectorAll('.nota-doc-header').forEach(el => {
-      el.style.cssText += ';flex-direction:row!important;align-items:center!important;';
-    });
-    clone.querySelectorAll('div[style*="flex-direction:column"]').forEach(el => {
-      el.style.flexDirection = 'row';
+    // Esconde elementos que não devem aparecer no PDF
+    const hidden = [];
+    element.querySelectorAll('.no-print, .col-del').forEach(el => {
+      hidden.push([el, el.style.display]);
+      el.style.display = 'none';
     });
 
-    wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:-99999px;left:0;width:900px;min-width:900px;background:#fff;z-index:-1;padding:0;margin:0;box-sizing:border-box';
-    // Converte imagens externas (SVG/img) para base64 para evitar CORS
-    const imgs = clone.querySelectorAll('img');
-    await Promise.all([...imgs].map(img => new Promise(res => {
-      const canvas2 = document.createElement('canvas');
-      const ctx = canvas2.getContext('2d');
-      const i = new Image();
-      i.crossOrigin = 'anonymous';
-      i.onload = () => {
-        canvas2.width = i.naturalWidth || 100;
-        canvas2.height = i.naturalHeight || 100;
-        ctx.drawImage(i, 0, 0);
-        try { img.src = canvas2.toDataURL('image/png'); } catch(e) { img.src = ''; }
-        res();
-      };
-      i.onerror = () => { img.style.display = 'none'; res(); };
-      i.src = img.src;
-    })));
+    // Força largura de desktop temporariamente
+    const prevWidth = element.style.width;
+    const prevMinWidth = element.style.minWidth;
+    element.style.width = '900px';
+    element.style.minWidth = '900px';
 
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    // Força 2 colunas nos grids
+    const twoCols = [];
+    element.querySelectorAll('.nota-2col').forEach(el => {
+      twoCols.push([el, el.style.gridTemplateColumns]);
+      el.style.gridTemplateColumns = '1fr 1fr';
+    });
 
-    // Aguarda renderização completa
-    await new Promise(r => requestAnimationFrame(r));
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 300));
 
-    const canvas = await html2canvas(wrapper, {
+    const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
       width: 900,
-      height: wrapper.scrollHeight,
+      height: element.scrollHeight,
       windowWidth: 900,
     });
 
-    document.body.removeChild(wrapper);
-    wrapper = null;
+    // Restaura estilos
+    element.style.width = prevWidth;
+    element.style.minWidth = prevMinWidth;
+    twoCols.forEach(([el, v]) => el.style.gridTemplateColumns = v);
+    hidden.forEach(([el, v]) => el.style.display = v);
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     const margin = 8;
@@ -334,20 +312,18 @@ async function exportToPDF(elementId, filename) {
     if (imgH <= usableH) {
       pdf.addImage(imgData, 'JPEG', margin, margin, usableW, imgH);
     } else {
-      // Paginação correta sem cortar conteúdo
-      const ratio = canvas.width / usableW; // px por mm
+      const ratio = canvas.width / usableW;
       const pageHpx = usableH * ratio;
       let offsetPx = 0;
       while (offsetPx < canvas.height) {
         if (offsetPx > 0) pdf.addPage();
         const sliceH = Math.min(pageHpx, canvas.height - offsetPx);
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceH;
-        sliceCanvas.getContext('2d').drawImage(canvas, 0, offsetPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+        const sc = document.createElement('canvas');
+        sc.width = canvas.width;
+        sc.height = sliceH;
+        sc.getContext('2d').drawImage(canvas, 0, offsetPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
         const sliceHmm = (sliceH / canvas.width) * usableW;
-        pdf.addImage(sliceData, 'JPEG', margin, margin, usableW, sliceHmm);
+        pdf.addImage(sc.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, usableW, sliceHmm);
         offsetPx += pageHpx;
       }
     }
@@ -356,7 +332,6 @@ async function exportToPDF(elementId, filename) {
     toast('PDF salvo com sucesso!', 'ok');
   } catch (e) {
     console.error('Erro exportToPDF:', e);
-    if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
     toast('Erro ao gerar PDF: ' + e.message, 'err', 6000);
   } finally {
     if (overlay) overlay.classList.add('hidden');

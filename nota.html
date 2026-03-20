@@ -593,12 +593,7 @@
 
     // Exporta PDF
     const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
-    try {
-      await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
-    } catch(pdfErr) {
-      console.error('PDF error:', pdfErr);
-      toast('Erro ao gerar PDF: ' + pdfErr.message, 'err', 8000);
-    }
+    await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
   });
 
   // ── Imprimir ──
