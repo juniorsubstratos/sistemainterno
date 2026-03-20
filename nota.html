@@ -506,14 +506,19 @@
     if (!_clientesCache) {
       list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando clientes...</div>';
       try {
-        _clientesCache = typeof dbGetClientes === 'function' ? await dbGetClientes() : getClientes();
+        // Importa e chama direto do Firebase
+        var fbMod = await import('./firebase.js');
+        var fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        var snap  = await fsMod.getDocs(fsMod.query(fsMod.collection(fbMod.db,'clientes'), fsMod.orderBy('nome')));
+        _clientesCache = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       } catch(e) {
-        _clientesCache = getClientes();
+        console.warn('Firestore clientes:', e);
+        _clientesCache = getClientes(); // fallback localStorage
       }
     }
 
     renderCliList('');
-    setTimeout(()=>document.getElementById('modal-cli-search').focus(), 100);
+    setTimeout(function(){ document.getElementById('modal-cli-search').focus(); }, 100);
   }
 
   function renderCliList(q) {
