@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gerar Nota de Pedido — Junior Substratos</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <script src="utils.js"></script>
@@ -31,8 +33,8 @@
     <main class="page-content">
       <div class="page-header no-print">
         <div>
-          <h1 class="page-heading" id="page-heading">Gerar Nota de Pedido</h1>
-          <p class="page-sub" id="page-sub">Preencha os dados e gere a nota. Os campos com * são obrigatórios.</p>
+          <h1 class="page-heading">Gerar Nota de Pedido</h1>
+          <p class="page-sub">Preencha os dados e gere a nota. Os campos com * são obrigatórios.</p>
         </div>
         <div class="page-actions">
           <button class="btn btn-ghost" id="btn-clear">
@@ -45,7 +47,7 @@
           </button>
           <button class="btn btn-primary" id="btn-salvar">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-6H7v6M7 3H3v18h14V7l-4-4z"/><path d="M11 3v4h4"/></svg>
-            <span id="lbl-salvar">Salvar e PDF</span>
+            Salvar e PDF
           </button>
         </div>
       </div>
@@ -351,7 +353,7 @@
 
     function openDropdown(q) {
       closeDropdown();
-      const prods = (window._pCache||getProdutos()).filter(p =>
+      const prods = getProdutos().filter(p =>
         p.nome.toLowerCase().includes(q.toLowerCase()) ||
         (p.codigo && p.codigo.toLowerCase().includes(q.toLowerCase()))
       );
@@ -492,44 +494,61 @@
   document.getElementById('btn-buscar-cli').addEventListener('click', openCliModal);
   document.getElementById('modal-cli-close').addEventListener('click', () => document.getElementById('modal-cli').classList.remove('open'));
 
+  // Cache de clientes carregado do Firestore
+  var _clientesCache = null;
+
   async function openCliModal() {
-    var modal = document.getElementById('modal-cli');
+    const modal = document.getElementById('modal-cli');
     modal.classList.add('open');
-    if (!window._cCache) {
-      document.getElementById('modal-cli-list').innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando...</div>';
-      window._cCache = typeof dbGetClientes==='function' ? await dbGetClientes() : getClientes();
+    const list = document.getElementById('modal-cli-list');
+
+    // Carrega clientes do Firestore se ainda não carregou
+    if (!_clientesCache) {
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-faint)">Carregando clientes...</div>';
+      try {
+        _clientesCache = typeof dbGetClientes === 'function' ? await dbGetClientes() : getClientes();
+      } catch(e) {
+        _clientesCache = getClientes();
+      }
     }
+
     renderCliList('');
-    setTimeout(function(){document.getElementById('modal-cli-search').focus();},100);
+    setTimeout(()=>document.getElementById('modal-cli-search').focus(), 100);
   }
 
   function renderCliList(q) {
     const list = document.getElementById('modal-cli-list');
-    const clientes = (window._cCache||getClientes()).filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
+    const fonte = _clientesCache || getClientes();
+    const clientes = fonte.filter(c => !q || c.nome.toLowerCase().includes(q.toLowerCase()));
+
     if (!clientes.length) {
-      list.innerHTML = `<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>`;
+      list.innerHTML = '<div class="empty-state" style="padding:24px"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="24" cy="14" r="10"/><path d="M4 44c0-11 8.95-20 20-20s20 9 20 20"/></svg><p>Nenhum cliente encontrado.</p></div>';
       return;
     }
-    list.innerHTML = clientes.map(c => `
-      <div style="padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background .15s"
-           onmouseover="this.style.background='var(--g-pale)'" onmouseout="this.style.background=''"
-           data-cid="${esc(c.id)}">
-        <div style="font-weight:700;font-size:13px;color:var(--gray-700)">${esc(c.nome)}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${esc(c.cpfcnpj||'')} ${c.tel?'· '+esc(c.tel):''}</div>
-      </div>
-    `).join('');
-    list.querySelectorAll('[data-cid]').forEach(el => {
+
+    list.innerHTML = clientes.map(function(cl) {
+      return '<div style="padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);transition:background .15s" ' +
+        'onmouseover="this.style.background='var(--moss-50)'" onmouseout="this.style.background=''" ' +
+        'data-cid="' + esc(cl.id) + '">' +
+        '<div style="font-weight:700;font-size:13px;color:var(--gray-700)">' + esc(cl.nome) + '</div>' +
+        '<div style="font-size:11px;color:var(--gray-400)">' + esc(cl.cpfcnpj||'') + (cl.tel ? ' · ' + esc(cl.tel) : '') + '</div>' +
+        '</div>';
+    }).join('');
+
+    // Evento de clique — usa o cache diretamente, não chama getClientes()
+    list.querySelectorAll('[data-cid]').forEach(function(el) {
       el.addEventListener('click', function() {
-        const c = getClientes().find(x=>x.id===this.dataset.cid);
-        if (!c) return;
-        document.getElementById('cli-nome').value    = c.nome||'';
-        document.getElementById('cli-cpfcnpj').value = c.cpfcnpj||'';
-        document.getElementById('cli-tel').value     = c.tel||'';
-        document.getElementById('cli-email').value   = c.email||'';
-        document.getElementById('cli-end').value     = c.endereco||'';
+        var fonte2 = _clientesCache || getClientes();
+        var cli = fonte2.find(function(x){ return x.id === el.dataset.cid; });
+        if (!cli) return;
+        document.getElementById('cli-nome').value    = cli.nome    || '';
+        document.getElementById('cli-cpfcnpj').value = cli.cpfcnpj || '';
+        document.getElementById('cli-tel').value     = cli.tel     || '';
+        document.getElementById('cli-email').value   = cli.email   || '';
+        document.getElementById('cli-end').value     = cli.endereco|| '';
         document.getElementById('modal-cli').classList.remove('open');
         syncMeta();
-        toast('Cliente preenchido!','ok',2000);
+        toast('Cliente preenchido!', 'ok', 2000);
       });
     });
   }
@@ -562,14 +581,16 @@
     syncMeta();
     document.getElementById('nota-footer-date').textContent = todayDisplay();
 
-    const notaData = {
-      num:     document.getElementById('num-pedido').value,
+    // Salva nota no localStorage
+    const nota = {
+      id: uid(),
+      num: document.getElementById('num-pedido').value,
       cliente: document.getElementById('cli-nome').value,
-      data:    dataEl.value,
-      total:   totals.total,
-      status:  'Emitida',
-      discPct: document.getElementById('disc-pct').value || '0',
-      items:   items.map(i=>({...i})),
+      data: dataEl.value,
+      total: totals.total,
+      status: 'Emitida',
+      createdAt: Date.now(),
+      items: items.map(i=>({...i})),
       empresa: {
         razao: document.getElementById('emp-razao').value,
         cnpj:  document.getElementById('emp-cnpj').value,
@@ -584,31 +605,16 @@
         email:    document.getElementById('cli-email').value,
         endereco: document.getElementById('cli-end').value,
       },
-      obs:  document.getElementById('obs').value,
+      obs: document.getElementById('obs').value,
       resp: document.getElementById('responsavel').value,
     };
-
-    var nota;
-    var notas = getNotas();
-    var eid = window._editingId || null;
-    if (eid) {
-      var idx = notas.findIndex(function(n){return n.id===eid;});
-      nota = Object.assign({}, idx>=0 ? notas[idx] : {}, notaData, {id: eid, updatedAt: Date.now()});
-      if (idx>=0) notas[idx]=nota; else notas.push(nota);
-      toast('Nota atualizada!','ok',2000);
-    } else {
-      nota = Object.assign({id:uid(), createdAt:Date.now()}, notaData);
-      notas.push(nota);
-    }
+    const notas = getNotas();
+    notas.push(nota);
     saveNotas(notas);
-    if (typeof dbSaveNota==='function') dbSaveNota(nota);
 
-    var btn = this;
-    btn.disabled = true;
-    document.getElementById('lbl-salvar').textContent = 'Gerando PDF...';
-    await gerarPDFNota(nota);
-    btn.disabled = false;
-    document.getElementById('lbl-salvar').textContent = eid ? 'Salvar alterações' : 'Salvar e PDF';
+    // Exporta PDF
+    const num = nota.num.replace(/[^a-zA-Z0-9-_]/g,'');
+    await exportToPDF('nota-doc', `${num}_${nota.cliente.replace(/\s+/g,'-').slice(0,20)}.pdf`);
   });
 
   // ── Imprimir ──
@@ -624,55 +630,21 @@
     if (!confirm('Limpar todo o formulário?')) return;
     document.querySelectorAll('.field-input').forEach(e=>{e.value='';e.classList.remove('error');});
     document.getElementById('emp-razao').value = 'Junior Substratos';
-    document.getElementById('num-pedido').value = 'PED-'+yr+'-'+String(Math.floor(Math.random()*900+100));
+    document.getElementById('num-pedido').value = `PED-${yr}-${String(Math.floor(Math.random()*900+100))}`;
     dataEl.value = todayISO();
     document.getElementById('disc-pct').value = '';
-    items = []; itemIdCnt = 1;
-    renderItems(); recalc(); syncMeta();
+    items = [];
+    itemIdCnt = 1;
+    renderItems();
+    recalc();
+    syncMeta();
     toast('Formulário limpo.','info',2000);
   });
 
   // Ctrl+Enter adiciona item
-  document.addEventListener('keydown', function(e) {
+  document.addEventListener('keydown', e => {
     if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); document.getElementById('btn-add-item').click(); }
   });
-
-  // ── Pré-carrega dados do Firestore ──
-  window._editingId = null;
-  if (typeof dbGetProdutos==='function') dbGetProdutos().then(function(p){window._pCache=p;});
-  if (typeof dbGetClientes==='function') dbGetClientes().then(function(cl){window._cCache=cl;});
-
-  // ── Modo edição via ?edit=ID ──
-  var _eid = new URLSearchParams(window.location.search).get('edit');
-  if (_eid) {
-    var _ne = getNotas().find(function(n){return n.id===_eid;});
-    if (_ne) {
-      window._editingId = _eid;
-      document.getElementById('page-heading').textContent = 'Editar Nota de Pedido';
-      document.getElementById('page-sub').textContent = 'Edite os dados e salve as alterações.';
-      document.getElementById('lbl-salvar').textContent = 'Salvar alterações';
-      document.title = 'Editar Nota — Junior Substratos';
-      var _e=_ne.empresa||{}, _cl=_ne.clienteData||{};
-      document.getElementById('num-pedido').value  = _ne.num||'';
-      dataEl.value                                 = _ne.data||todayISO();
-      document.getElementById('responsavel').value = _ne.resp||'';
-      document.getElementById('emp-razao').value   = _e.razao||'Junior Substratos';
-      document.getElementById('emp-cnpj').value    = maskCnpj(_e.cnpj||'');
-      document.getElementById('emp-end').value     = _e.end||'';
-      document.getElementById('emp-tel').value     = maskPhone(_e.tel||'');
-      document.getElementById('emp-email').value   = _e.email||'';
-      document.getElementById('cli-nome').value    = _cl.nome||_ne.cliente||'';
-      document.getElementById('cli-cpfcnpj').value = maskCpfCnpj(_cl.cpfcnpj||'');
-      document.getElementById('cli-end').value     = _cl.endereco||'';
-      document.getElementById('cli-tel').value     = maskPhone(_cl.tel||'');
-      document.getElementById('cli-email').value   = _cl.email||'';
-      document.getElementById('obs').value         = _ne.obs||'';
-      if (_ne.discPct) document.getElementById('disc-pct').value = _ne.discPct;
-      items = (_ne.items||[]).map(function(i){return Object.assign({},i);});
-      itemIdCnt = items.length+1;
-      renderItems(); recalc(); syncMeta();
-    }
-  }
 })();
 </script>
 <script>
@@ -700,196 +672,6 @@
       });
     });
   })();
-</script>
-
-<script>
-async function gerarPDFNota(nota) {
-  var emp = nota.empresa || {};
-  var cli = nota.clienteData || {};
-  var dr  = nota.data || '';
-  var df  = dr;
-  if (dr.indexOf('-') > -1) { var p=dr.split('-'); df=p[2]+'/'+p[1]+'/'+p[0]; }
-
-  var fmt = function(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); };
-  var esc2 = function(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-  var fv  = function(v){ return esc2(v) || '&mdash;'; };
-
-  var itens = nota.items || [];
-  var sub   = itens.reduce(function(a,i){return a+(i.total||0);},0);
-  var pct   = parseFloat(nota.discPct||0);
-  var disc  = sub*(Math.min(100,Math.max(0,pct))/100);
-  var tot   = sub-disc;
-
-  // Logo SVG
-  var logo = '';
-  try {
-    var resp = await fetch('juniorsubstratos.svg');
-    var raw  = await resp.text();
-    // Muda cores para versão clara (fundo verde escuro)
-    logo = raw
-      .replace(/<style>[^<]*<\/style>/g, '<style>.cls-1{fill:#fff}.cls-2,.cls-3{fill:#a8ddb5}</style>')
-      .replace(/fill="#235d47"/g,'fill="#fff"')
-      .replace(/fill="#47b06b"/g,'fill="#a8ddb5"');
-  } catch(e){ logo='<text style="fill:#fff;font:bold 18px Arial">Junior Substratos</text>'; }
-
-  // Linhas de itens
-  var rows = '';
-  if (!itens.length) {
-    rows = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px">Nenhum item</td></tr>';
-  } else {
-    for (var i=0;i<itens.length;i++) {
-      var it=itens[i];
-      var bg = i%2===0 ? '#fff' : '#fafaf8';
-      rows += '<tr style="background:'+bg+'">';
-      rows += '<td style="text-align:center;width:36px;padding:7px 8px;color:#666">'+(i+1)+'</td>';
-      rows += '<td style="padding:7px 8px">'+esc2(it.desc||'')+'</td>';
-      rows += '<td style="text-align:right;width:60px;padding:7px 8px">'+(it.qty||1)+'</td>';
-      rows += '<td style="text-align:right;width:100px;padding:7px 8px">'+fmt(it.unit)+'</td>';
-      rows += '<td style="text-align:right;width:100px;padding:7px 8px;font-weight:700">'+fmt(it.total)+'</td>';
-      rows += '</tr>';
-    }
-  }
-
-  var css =
-    '*{box-sizing:border-box;margin:0;padding:0}'+
-    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#222;background:#f0ede8;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.pg{width:794px;margin:0 auto;background:#fff}'+
-    '.hd{background:linear-gradient(135deg,#1a4535 0%,#235d47 60%,#2e7a5f 100%);padding:18px 24px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.lg{width:160px;flex-shrink:0}'+
-    '.lg svg{width:160px;height:auto;display:block}'+
-    '.hl{font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.65);margin-left:12px;text-transform:uppercase}'+
-    '.hr{text-align:right}'+
-    '.bk{border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:2px 12px;font-size:9px;letter-spacing:.1em;color:#fff;display:inline-block;margin-bottom:8px}'+
-    '.mr{color:#fff;font-size:11px;margin-bottom:3px}'+
-    '.ml{opacity:.55;font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}'+
-    '.mv{font-weight:700}'+
-    '.sc{border-bottom:1px solid #e5e5e0}'+
-    '.sh{background:#f5f4f0;padding:8px 20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#235d47;border-bottom:1px solid #e5e5e0}'+
-    '.sb{padding:14px 20px}'+
-    '.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}'+
-    '.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:3px}'+
-    '.fv{font-size:12px;border:1px solid #ddd;border-radius:4px;padding:5px 9px;background:#fafaf8;min-height:26px;word-break:break-word}'+
-    '.c2{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #e5e5e0}'+
-    '.cl{border-right:1px solid #e5e5e0}'+
-    'table{width:100%;border-collapse:collapse}'+
-    'th{background:#235d47;color:#fff;padding:8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    'td{font-size:12px;border-bottom:1px solid #f0ede8;vertical-align:middle}'+
-    '.tw{display:flex;gap:20px;padding:14px 20px}'+
-    '.ow{flex:1}'+
-    '.ob{border:1px solid #ddd;border-radius:4px;padding:10px;min-height:60px;font-size:11px;color:#444;white-space:pre-wrap;background:#fafaf8}'+
-    '.tt{min-width:220px;background:#f5f4f0;border:1px solid #e5e5e0;border-radius:6px;padding:12px}'+
-    '.tr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#555}'+
-    '.tf{font-size:16px;font-weight:700;color:#235d47;border-top:2px solid #235d47;margin-top:8px;padding-top:8px}'+
-    '.sg{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:28px 44px}'+
-    '.sl{border-bottom:1.5px solid #333;height:40px;margin-bottom:7px}'+
-    '.slb{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;text-align:center;color:#555}'+
-    '.ss{font-size:11px;text-align:center;color:#888;margin-top:3px}'+
-    '.ft{background:linear-gradient(135deg,#1a4535,#235d47);color:rgba(255,255,255,.65);font-size:9px;padding:8px 24px;display:flex;justify-content:space-between;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '@media print{@page{size:A4;margin:0}body{background:#fff}.pg{width:100%;box-shadow:none}}';
-
-  var html =
-    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
-    '<style>'+css+'</style></head><body>'+
-    '<div class="pg">'+
-
-    // Header
-    '<div class="hd">'+
-      '<div style="display:flex;align-items:center">'+
-        '<div class="lg">'+logo+'</div>'+
-        '<span class="hl">Nota de Pedido</span>'+
-      '</div>'+
-      '<div class="hr">'+
-        '<div class="bk">NOTA DE PEDIDO</div>'+
-        '<div class="mr"><span class="ml">N&ordm; Pedido</span><span class="mv">'+esc2(nota.num)+'</span></div>'+
-        '<div class="mr"><span class="ml">Data</span><span class="mv">'+df+'</span></div>'+
-        '<div class="mr"><span class="ml">Vendedor(a)</span><span class="mv">'+(esc2(nota.resp)||'&mdash;')+'</span></div>'+
-      '</div>'+
-    '</div>'+
-
-    // Informações
-    '<div class="sc"><div class="sh">Informa&ccedil;&otilde;es do Pedido</div><div class="sb">'+
-      '<div class="g2" style="margin-bottom:12px">'+
-        '<div><div class="fl">N&uacute;mero do Pedido</div><div class="fv">'+esc2(nota.num)+'</div></div>'+
-        '<div><div class="fl">Data</div><div class="fv">'+df+'</div></div>'+
-      '</div>'+
-      '<div><div class="fl">Vendedor(a)</div><div class="fv">'+(esc2(nota.resp)||'&mdash;')+'</div></div>'+
-    '</div></div>'+
-
-    // Empresa + Cliente
-    '<div class="c2">'+
-      '<div class="cl"><div class="sh">Dados da Empresa</div><div class="sb">'+
-        '<div style="margin-bottom:10px"><div class="fl">Raz&atilde;o Social</div><div class="fv">'+fv(emp.razao)+'</div></div>'+
-        '<div style="margin-bottom:10px"><div class="fl">CNPJ</div><div class="fv">'+fv(emp.cnpj)+'</div></div>'+
-        '<div style="margin-bottom:10px"><div class="fl">Endere&ccedil;o</div><div class="fv">'+fv(emp.end)+'</div></div>'+
-        '<div class="g2">'+
-          '<div><div class="fl">Telefone</div><div class="fv">'+fv(emp.tel)+'</div></div>'+
-          '<div><div class="fl">E-mail</div><div class="fv">'+fv(emp.email)+'</div></div>'+
-        '</div>'+
-      '</div></div>'+
-      '<div><div class="sh">Dados do Cliente</div><div class="sb">'+
-        '<div style="margin-bottom:10px"><div class="fl">Nome / Raz&atilde;o Social</div><div class="fv">'+fv(cli.nome||nota.cliente)+'</div></div>'+
-        '<div style="margin-bottom:10px"><div class="fl">CPF / CNPJ</div><div class="fv">'+fv(cli.cpfcnpj)+'</div></div>'+
-        '<div style="margin-bottom:10px"><div class="fl">Endere&ccedil;o</div><div class="fv">'+fv(cli.endereco)+'</div></div>'+
-        '<div class="g2">'+
-          '<div><div class="fl">Telefone</div><div class="fv">'+fv(cli.tel)+'</div></div>'+
-          '<div><div class="fl">E-mail</div><div class="fv">'+fv(cli.email)+'</div></div>'+
-        '</div>'+
-      '</div></div>'+
-    '</div>'+
-
-    // Itens
-    '<div class="sc"><div class="sh">Itens do Pedido</div>'+
-      '<table><thead><tr>'+
-        '<th style="text-align:center;width:36px">#</th>'+
-        '<th style="text-align:left">Descri&ccedil;&atilde;o</th>'+
-        '<th style="text-align:right;width:60px">Qtd</th>'+
-        '<th style="text-align:right;width:100px">Valor Unit.</th>'+
-        '<th style="text-align:right;width:100px">Total</th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table>'+
-    '</div>'+
-
-    // Totais + Obs
-    '<div class="sc"><div class="tw">'+
-      '<div class="ow"><div class="fl" style="margin-bottom:6px">Observa&ccedil;&otilde;es</div>'+
-        '<div class="ob">'+esc2(nota.obs||'')+'</div>'+
-      '</div>'+
-      '<div class="tt">'+
-        '<div class="tr"><span>Subtotal</span><span>'+fmt(sub)+'</span></div>'+
-        '<div class="tr"><span>Desconto ('+(nota.discPct||0)+'%)</span><span>- '+fmt(disc)+'</span></div>'+
-        '<div class="tr tf"><span>TOTAL FINAL</span><span>'+fmt(tot)+'</span></div>'+
-      '</div>'+
-    '</div></div>'+
-
-    // Assinaturas
-    '<div class="sc"><div class="sh">Assinaturas</div><div class="sg">'+
-      '<div><div class="sl"></div><div class="slb">Vendedor(a)</div><div class="ss">'+(esc2(nota.resp)||'&mdash;')+'</div></div>'+
-      '<div><div class="sl"></div><div class="slb">Assinatura do Cliente</div><div class="ss">'+esc2(cli.nome||nota.cliente||'')+'</div></div>'+
-    '</div></div>'+
-
-    // Footer
-    '<div class="ft">'+
-      '<span>Junior Substratos &middot; Emitido em '+df+'</span>'+
-      '<span>Documento de uso interno. N&atilde;o possui valor fiscal.</span>'+
-    '</div>'+
-    '</div>'+
-    '<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},600);};</scr'+'ipt>'+
-    '</body></html>';
-
-  // Abre em nova aba para imprimir/salvar como PDF
-  var blob = new Blob([html], {type: 'text/html;charset=utf-8'});
-  var url  = URL.createObjectURL(blob);
-  var win  = window.open(url, '_blank');
-  if (!win) {
-    // Popup bloqueado: faz download direto
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = (nota.num||'nota').replace(/[^a-zA-Z0-9\-_]/g,'') + '_' + (nota.cliente||'cliente').replace(/\s+/g,'-').slice(0,20) + '.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-  if (typeof toast === 'function') toast('Nota aberta! Use Ctrl+P ou Salvar como PDF.', 'ok', 5000);
-}
 </script>
 </body>
 </html>
