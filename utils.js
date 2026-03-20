@@ -263,47 +263,69 @@ async function exportToPDF(elementId, filename) {
     const { jsPDF } = window.jspdf;
     const element = document.getElementById(elementId);
 
-    // Esconde botões de ação
-    const noPrint = element.querySelectorAll('.no-print, .col-del');
-    noPrint.forEach(el => el.style.setProperty('display','none','important'));
+    // Clona o elemento em um container isolado fora do layout
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll('.no-print, .col-del').forEach(el => el.remove());
 
-    await new Promise(r => requestAnimationFrame(r));
+    // Força layout de 2 colunas no clone (evita corte em mobile)
+    clone.querySelectorAll('.nota-2col').forEach(el => {
+      el.style.setProperty('display', 'grid', 'important');
+      el.style.setProperty('grid-template-columns', '1fr 1fr', 'important');
+    });
+    clone.querySelectorAll('.sig-grid').forEach(el => {
+      el.style.setProperty('display', 'grid', 'important');
+      el.style.setProperty('grid-template-columns', 'repeat(2,1fr)', 'important');
+    });
+    clone.querySelectorAll('.nota-doc-header').forEach(el => {
+      el.style.setProperty('flex-direction', 'row', 'important');
+      el.style.setProperty('align-items', 'center', 'important');
+    });
 
-    const canvas = await html2canvas(element, {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = [
+      'position:fixed',
+      'top:-99999px',
+      'left:0',
+      'width:900px',
+      'min-width:900px',
+      'background:#fff',
+      'z-index:-1',
+      'padding:0',
+      'margin:0',
+    ].join(';');
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    await new Promise(r => setTimeout(r, 400));
+
+    const canvas = await html2canvas(wrapper, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-      onclone: doc => {
-        doc.querySelectorAll('.no-print, .col-del').forEach(el => el.style.display = 'none');
-      }
+      width: 900,
+      height: wrapper.scrollHeight,
+      windowWidth: 900,
     });
 
-    noPrint.forEach(el => el.style.removeProperty('display'));
+    document.body.removeChild(wrapper);
 
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4', compress:true });
     const margin = 8;
     const pageW = 210;
     const pageH = 297;
-    const imgW = pageW - margin * 2;
-    const imgH = (canvas.height / canvas.width) * imgW;
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+    const imgH = (canvas.height / canvas.width) * usableW;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    if (imgH <= pageH - margin * 2) {
-      // Cabe em uma página — centraliza verticalmente
-      pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH);
+    if (imgH <= usableH) {
+      pdf.addImage(imgData, 'JPEG', margin, margin, usableW, imgH);
     } else {
-      // Múltiplas páginas — corta corretamente sem perder conteúdo
-      const usableH = pageH - margin * 2;
       let renderedH = 0;
       while (renderedH < imgH) {
         if (renderedH > 0) pdf.addPage();
-        // Posiciona a imagem de forma que a fatia correta apareça na página
-        pdf.addImage(imgData, 'JPEG', margin, margin - renderedH, imgW, imgH);
-        // Clipar área da página (evita sangramento)
+        pdf.addImage(imgData, 'JPEG', margin, margin - renderedH, usableW, imgH);
         renderedH += usableH;
       }
     }
