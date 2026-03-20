@@ -263,44 +263,79 @@ async function exportToPDF(elementId, filename) {
     const { jsPDF } = window.jspdf;
     const element = document.getElementById(elementId);
 
-    // Esconde elementos que não devem aparecer no PDF
-    const hidden = [];
-    element.querySelectorAll('.no-print, .col-del').forEach(el => {
-      hidden.push([el, el.style.display]);
-      el.style.display = 'none';
+    // Clona o elemento para manipulação sem afetar a tela
+    const clone = element.cloneNode(true);
+
+    // 1) Remove elementos que não devem ir pro PDF
+    clone.querySelectorAll('.no-print, .col-del').forEach(el => el.remove());
+
+    // 2) Substitui <input> e <textarea> por <div> com o valor (evita corte de texto)
+    clone.querySelectorAll('input, textarea').forEach(inp => {
+      const orig = element.querySelector('[id="'+inp.id+'"]') || inp;
+      const val = orig.tagName === 'INPUT' || orig.tagName === 'TEXTAREA'
+        ? orig.value
+        : inp.value;
+      const div = document.createElement('div');
+      div.textContent = val || '';
+      div.style.cssText = window.getComputedStyle(orig).cssText;
+      div.style.overflow = 'visible';
+      div.style.whiteSpace = 'normal';
+      div.style.wordBreak = 'break-word';
+      div.style.minHeight = '24px';
+      div.style.padding = '6px 10px';
+      div.style.boxSizing = 'border-box';
+      div.style.border = '1px solid #ddd';
+      div.style.borderRadius = '6px';
+      div.style.background = '#fff';
+      div.style.fontSize = '13px';
+      div.style.color = '#1a1a1a';
+      inp.parentNode.replaceChild(div, inp);
     });
 
-    // Força largura de desktop temporariamente
-    const prevWidth = element.style.width;
-    const prevMinWidth = element.style.minWidth;
-    element.style.width = '900px';
-    element.style.minWidth = '900px';
+    // 3) Converte SVG logo para base64
+    const svgImgs = clone.querySelectorAll('img[src$=".svg"]');
+    await Promise.all([...svgImgs].map(img => new Promise(res => {
+      fetch(img.src)
+        .then(r => r.text())
+        .then(svgText => {
+          const b64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+          img.src = b64;
+          res();
+        })
+        .catch(() => { img.style.display = 'none'; res(); });
+    })));
 
-    // Força 2 colunas nos grids
-    const twoCols = [];
-    element.querySelectorAll('.nota-2col').forEach(el => {
-      twoCols.push([el, el.style.gridTemplateColumns]);
-      el.style.gridTemplateColumns = '1fr 1fr';
+    // 4) Força layout desktop no clone
+    clone.querySelectorAll('.nota-2col').forEach(el => {
+      el.style.cssText += ';display:grid!important;grid-template-columns:1fr 1fr!important;';
+    });
+    clone.querySelectorAll('.nota-doc-header').forEach(el => {
+      el.style.cssText += ';flex-direction:row!important;align-items:center!important;';
+    });
+    clone.querySelectorAll('.sig-grid').forEach(el => {
+      el.style.cssText += ';display:grid!important;grid-template-columns:repeat(2,1fr)!important;';
     });
 
-    await new Promise(r => setTimeout(r, 300));
+    // 5) Monta wrapper isolado com largura fixa
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:-99999px;left:0;width:900px;min-width:900px;background:#fff;z-index:-1;padding:0;margin:0;box-sizing:border-box;font-family:inherit';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
-    const canvas = await html2canvas(element, {
+    await new Promise(r => setTimeout(r, 500));
+
+    const canvas = await html2canvas(wrapper, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
       width: 900,
-      height: element.scrollHeight,
+      height: wrapper.scrollHeight,
       windowWidth: 900,
     });
 
-    // Restaura estilos
-    element.style.width = prevWidth;
-    element.style.minWidth = prevMinWidth;
-    twoCols.forEach(([el, v]) => el.style.gridTemplateColumns = v);
-    hidden.forEach(([el, v]) => el.style.display = v);
+    document.body.removeChild(wrapper);
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     const margin = 8;
