@@ -28,6 +28,10 @@
         width: 100% !important;
       }
 
+      /* Esconde input de data — usa o span disp-data que já tem formato DD/MM/AAAA */
+      #data-pedido { display: none !important; }
+      #data-pedido-display { display: block !important; }
+
       /* CAMPOS: mostra só o valor, sem borda nem background */
       #nota-doc input,
       #nota-doc textarea,
@@ -123,6 +127,32 @@
       .nota-footer * { color: rgba(255,255,255,.55) !important; }
 
       /* Paginação A4 */
+
+      /* Garante que nota-doc e cabeçalho não sejam cortados */
+      #nota-doc {
+        overflow: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .nota-doc-header {
+        overflow: visible !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .nota-empresa {
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
+      }
+      /* Logo no cabeçalho */
+      .nota-logo-inline,
+      .nota-doc-header img,
+      .nota-doc-header svg {
+        display: block !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
       @page {
         size: A4 portrait;
         margin: 10mm 12mm;
@@ -219,6 +249,7 @@
               <div class="field">
                 <label class="field-label" for="data-pedido">Data</label>
                 <input class="field-input" type="date" id="data-pedido" />
+                <span id="data-pedido-display" style="display:none;font-size:13px;color:#2e3630;font-weight:500"></span>
               </div>
             </div>
             <div class="field">
@@ -437,6 +468,8 @@
   // ── Data automática ──
   const dataEl = document.getElementById('data-pedido');
   dataEl.value = todayISO();
+  const ddDisplay = document.getElementById('data-pedido-display');
+  if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
   document.getElementById('nota-footer-date').textContent = todayDisplay();
 
   // Número sugerido
@@ -448,6 +481,8 @@
   function syncMeta() {
     document.getElementById('disp-num').textContent = document.getElementById('num-pedido').value || '—';
     document.getElementById('disp-data').textContent = isoToDisplay(dataEl.value);
+    const ddDisplay = document.getElementById('data-pedido-display');
+    if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
     const resp = document.getElementById('responsavel').value;
     document.getElementById('disp-resp').textContent = resp || '—';
     document.getElementById('sig-resp').textContent = resp || '—';
@@ -731,6 +766,8 @@
     document.getElementById('emp-razao').value = 'Junior Substratos';
     document.getElementById('num-pedido').value = `PED-${yr}-${String(Math.floor(Math.random()*900+100))}`;
     dataEl.value = todayISO();
+  const ddDisplay = document.getElementById('data-pedido-display');
+  if (ddDisplay) ddDisplay.textContent = isoToDisplay(dataEl.value);
     document.getElementById('disc-pct').value = '';
     items = [];
     itemIdCnt = 1;
