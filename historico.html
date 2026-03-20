@@ -83,7 +83,7 @@
       <span class="modal-title" id="modal-view-title">Nota de Pedido</span>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost btn-sm no-print" id="btn-modal-edit">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/><path d="M14 2l4 4"/></svg>
           Editar
         </button>
         <button class="btn btn-secondary btn-sm no-print" id="btn-modal-print">
@@ -183,7 +183,7 @@
             Visualizar
           </button>
           <button class="btn btn-ghost btn-sm" data-edit="${esc(n.id)}" style="margin-right:4px">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/></svg>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4l5 5L6 19H1v-5L11 4z"/><path d="M14 2l4 4"/></svg>
             Editar
           </button>
           <button class="btn btn-sm" style="background:#fdf0ee;color:var(--danger);border:1.5px solid #f5b7b1" data-del="${esc(n.id)}">
@@ -334,7 +334,6 @@
     toast('Nota excluída.', 'info');
   });
 
-  // ── Editar do modal ──
   document.getElementById('btn-modal-edit').addEventListener('click', function() {
     if (!viewingNota) return;
     window.location.href = 'nota.html?edit=' + viewingNota.id;
