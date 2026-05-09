@@ -94,14 +94,24 @@ document.getElementById('login-form').addEventListener('submit', async function(
   try {
     const cred = await signInWithEmailAndPassword(auth, email, senha);
     const uDoc = await getDoc(doc(db,'usuarios',cred.user.uid));
-    if(!uDoc.exists()||!uDoc.data().verified){
+
+    // Bloqueia apenas se verified for explicitamente false
+    // (usuários antigos sem o campo conseguem entrar normalmente)
+    if(!uDoc.exists() || uDoc.data().verified === false){
       showAlert('Conta não verificada. Conclua o cadastro.');
       await auth.signOut(); btn.disabled=false; btn.textContent='Entrar no sistema'; return;
     }
-    const ud=uDoc.data();
-    localStorage.setItem('js_user', JSON.stringify({uid:cred.user.uid, email, name:ud.name, avatar:ud.avatar||'', verified:true}));
+
+    const ud = uDoc.data();
+    localStorage.setItem('js_user', JSON.stringify({
+      uid: cred.user.uid,
+      email,
+      name: ud.name || '',
+      avatar: ud.avatar || '',
+      verified: true
+    }));
     toast('Bem-vindo!','ok');
-    setTimeout(()=>window.location.href='dashboard.html',800);
+    setTimeout(()=>window.location.href='dashboard.html', 800);
   } catch(err){
     btn.disabled=false; btn.textContent='Entrar no sistema';
     if(['auth/user-not-found','auth/wrong-password','auth/invalid-credential'].includes(err.code)){
